@@ -1,0 +1,13 @@
+Package: qfuncMM
+Type: Package
+Title: Mixed-effects Model for Quantifying Functional Connectivity
+Version: 0.1.0
+Date: 2022-08-02
+Author: Chau Tran
+Maintainer: Chau Tran <chautran@ucsb.edu>
+Description: Mixed-effects Model for Quantifying Functional Connectivity
+License: GPL (>= 3)
+Imports: Rcpp (>= 1.0.9), MASS
+LinkingTo: Rcpp, RcppArmadillo, RcppEnsmallen
+Encoding: UTF-8
+RoxygenNote: 7.2.1

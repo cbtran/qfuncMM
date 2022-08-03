@@ -1,5 +1,8 @@
 # Prerequisites
 *.d
+*.Rbuildignore
+*.Rhistory
+*.DS_Store
 
 # Compiled Object files
 *.slo
