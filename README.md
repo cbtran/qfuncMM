@@ -1,6 +1,6 @@
 # qfuncMM
 
-The `qfuncMM` package contains implementation of the methodologies described in [Zhang et.al. ``Quantifying brain functional connectivity with noisy voxel-level signals". 2022.(https://arxiv.org).
+The `qfuncMM` package contains implementation of the methodologies described in our paper [Quantifying brain functional connectivity with noisy voxel-level signals](https://arxiv.org).
 
 To install `qfuncMM` from github, type in R console
 ```
