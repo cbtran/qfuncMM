@@ -42,9 +42,9 @@ List of 2 components:
 Fit inter-regional model
 }
 \examples{
-L <- 40 # Numbers of voxels
+L <- 20 # Numbers of voxels
 side_length <- 7 # Side length of each region
-M <- 50 # Numbers of timepoints
+M <- 30 # Numbers of timepoints
 num_sim <- 1 # Numbers of simulation
 # Generate voxels for each region
 set.seed(1)
