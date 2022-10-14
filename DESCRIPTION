@@ -7,7 +7,7 @@ Author: Chau Tran
 Maintainer: Chau Tran <chautran@ucsb.edu>
 Description: Mixed-effects Model for Quantifying Functional Connectivity
 License: GPL-2
-Imports: Rcpp (>= 1.0.9), MASS
+Imports: Rcpp (>= 1.0.9), RcppArmadillo, RcppEnsmallen, MASS, ggplot2, tidyverse, readr, ggpubr, corrplot, latex2exp, Matrix, xtable, ggridges
 LinkingTo: Rcpp, RcppArmadillo, RcppEnsmallen
 Encoding: UTF-8
 RoxygenNote: 7.2.1
