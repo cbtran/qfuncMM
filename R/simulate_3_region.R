@@ -120,12 +120,13 @@ simulate_3_region <- function(L1,
   B3 <- theta$k_gamma_3 * get_cor_mat("rbf", timeSqrd_mat, theta$tau_gamma_3)
   gammaSigma3 <- kronecker(C3, B3)
   
-  if(!missing(random_seed)) {
-    set.seed(random_seed)
-  }
+  set.seed(random_seed)
   eta <- matrix(mvrnorm(num_sim, mu = rep(0, 3*M), Sigma = sigma_sqrd*etaSigma), nrow=num_sim, ncol=3*M, byrow=T)
+  set.seed(random_seed)
   gammaR1 <- matrix(mvrnorm(num_sim, mu = rep(0, L1*M), Sigma = sigma_sqrd*gammaSigma1), nrow=num_sim, ncol=L1*M, byrow=T)
+  set.seed(random_seed)
   gammaR2 <- matrix(mvrnorm(num_sim, mu = rep(0, L2*M), Sigma = sigma_sqrd*gammaSigma2), nrow=num_sim, ncol=L2*M, byrow=T)
+  set.seed(random_seed)
   gammaR3 <- matrix(mvrnorm(num_sim, mu = rep(0, L3*M), Sigma = sigma_sqrd*gammaSigma3), nrow=num_sim, ncol=L3*M, byrow=T)
   
 
