@@ -130,17 +130,30 @@ simulate_3_region <- function(L1,
   
 
   obs_signal <- list()
-  for(i in 1:num_sim) {
-    # Generate iid noise
-    set.seed(1000+i)
-    epsilon <- rep(0, (L1+L2+L3)*M) + diag(rep(sqrt(sigma_sqrd), (L1+L2+L3)*M)) %*% rnorm((L1+L2+L3)*M)
-    
-    # Combine eta and gamma effects
-    obs_signal[[i]] = list(X_Region1 = matrix(rep(mu_1, L1) + rep(eta[i,1:M], L1) + gammaR1[i,] + epsilon[1:(L1*M)], ncol=1),
-                           X_Region2 = matrix(rep(mu_2, L2) + rep(eta[i,(M+1):(2*M)], L2) + gammaR2[i,] + epsilon[(L1*M+1):((L1+L2)*M)], ncol=1),
-                           X_Region3 = matrix(rep(mu_3, L3) + rep(eta[i,(2*M+1):(3*M)], L3) + gammaR3[i,] + epsilon[((L1+L2)*M+1):((L1+L2+L3)*M)], ncol=1)
-    )
+  if (num_sim == 1) {
+      # Generate iid noise
+      set.seed(random_seed+1000+i)
+      epsilon <- rep(0, (L1+L2+L3)*M) + diag(rep(sqrt(sigma_sqrd), (L1+L2+L3)*M)) %*% rnorm((L1+L2+L3)*M)
+      
+      # Combine eta and gamma effects
+      obs_signal[[1]] = list(X_Region1 = matrix(rep(mu_1, L1) + rep(eta[1:M], L1) + gammaR1 + epsilon[1:(L1*M)], ncol=1),
+                             X_Region2 = matrix(rep(mu_2, L2) + rep(eta[(M+1):(2*M)], L2) + gammaR2 + epsilon[(L1*M+1):((L1+L2)*M)], ncol=1),
+                             X_Region3 = matrix(rep(mu_3, L3) + rep(eta[(2*M+1):(3*M)], L3) + gammaR3 + epsilon[((L1+L2)*M+1):((L1+L2+L3)*M)], ncol=1)
+                             )
+  } else {
+      for(i in 1:num_sim) {
+          # Generate iid noise
+          set.seed(random_seed+1000+i)
+          epsilon <- rep(0, (L1+L2+L3)*M) + diag(rep(sqrt(sigma_sqrd), (L1+L2+L3)*M)) %*% rnorm((L1+L2+L3)*M)
+          
+          # Combine eta and gamma effects
+          obs_signal[[i]] = list(X_Region1 = matrix(rep(mu_1, L1) + rep(eta[i,1:M], L1) + gammaR1[i,] + epsilon[1:(L1*M)], ncol=1),
+                                 X_Region2 = matrix(rep(mu_2, L2) + rep(eta[i,(M+1):(2*M)], L2) + gammaR2[i,] + epsilon[(L1*M+1):((L1+L2)*M)], ncol=1),
+                                 X_Region3 = matrix(rep(mu_3, L3) + rep(eta[i,(2*M+1):(3*M)], L3) + gammaR3[i,] + epsilon[((L1+L2)*M+1):((L1+L2+L3)*M)], ncol=1)
+          )
+      }
   }
+
   
   # Write out data if folder name is provided
   if(!missing(out_folder_name)) {
