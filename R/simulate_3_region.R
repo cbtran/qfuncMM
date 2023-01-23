@@ -132,7 +132,7 @@ simulate_3_region <- function(L1,
   obs_signal <- list()
   if (num_sim == 1) {
       # Generate iid noise
-      set.seed(random_seed+1000+i)
+      set.seed(random_seed+1000+1)
       epsilon <- rep(0, (L1+L2+L3)*M) + diag(rep(sqrt(sigma_sqrd), (L1+L2+L3)*M)) %*% rnorm((L1+L2+L3)*M)
       
       # Combine eta and gamma effects
