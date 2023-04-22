@@ -113,22 +113,15 @@ arma::mat R_inv_B(const arma::mat& R_chol,
 // @param x scalar
 // @return compute sofplus function log(1 + exp(x))
 double softplus(double x) {
-  return log(1. + exp(x));
+  return R::log1pexp(x);
 }
 
 // Compute softplus
 // @param x scalar or matrix
 // @return compute sofplus function log(1 + exp(x)) element-wise
 arma::mat softplus(arma::mat xMat) {
-  return arma::log(1. + arma::exp(xMat));
+  return xMat.transform([](double x){return softplus(x);});
 }
-
-// Compute invers of softplus
-double softplus_inv(double x) {
-  return log(exp(x) - 1.);
-}
-
-
 
 // Compute logistic:
 // @param scalar x
@@ -147,7 +140,7 @@ double sigmoid(double x,
                double lower, 
                double upper) {
   double u = (x-lower) / (upper-lower);
-  return log(u/(1.-u));
+  return log(u) - log(1 - u);
 }
 
 // Compute sigmoid inverse
