@@ -3,7 +3,6 @@
 #include <RcppArmadillo.h>
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <math.h>
-#include "region.h"
 #include "get_cor_mat.h"
 
 //' @title Kronecker matrix-vector product (Steeb & Hardy, 2011)
@@ -42,22 +41,30 @@ arma::mat kronecker_mmm (const arma::mat& A,
 //' @return Matrix of squared distance between voxels for that region
 //' @export
 // [[Rcpp::export()]]
-arma::mat get_dist_sqrd_mat(int L,
-                           int sideLength,
-                           Rcpp::NumericVector voxelID) {
-  // Create a REGION object.
-  REGION R(sideLength);
-  
-  arma::mat dist_sqrdMat(L, L, arma::fill::zeros);
+arma::mat get_dist_sqrd_mat(int L, int sideLength, Rcpp::NumericVector voxelID)
+{
+  arma::mat distSqrd(L, L, arma::fill::zeros);
+
+  int sideLengthSqrd = pow(sideLength, 2);
+
   for (int i = 0; i < L; i++) {
     for (int j = 0; j <= i; j++) {
+      // Convert to vector of coordinates assuming column-major order
       int v1 = voxelID[i];
+      int v1z = v1 % sideLength;
+      int v1y = v1 / sideLength;
+      int v1x = v1 / sideLengthSqrd;
+
       int v2 = voxelID[j];
-      dist_sqrdMat(i,j) = R.getDistPair(v1,v2);
+      int v2z = v2 % sideLength;
+      int v2y = v2 / sideLength;
+      int v2x = v2 / sideLengthSqrd;
+
+      distSqrd(i, j) = pow(v1x - v2x, 2) + pow(v1y - v2y, 2) + pow(v1z - v2z, 2);
     }
   }
-  dist_sqrdMat = arma::symmatl(dist_sqrdMat);
-  return (dist_sqrdMat);
+  distSqrd = arma::symmatl(distSqrd);
+  return (distSqrd);
 }
 
 
