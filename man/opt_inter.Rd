@@ -27,12 +27,6 @@ opt_inter(
 \item{dist_sqrdMat_2}{Block component for that region 2}
 
 \item{kernel_type}{Choice of spatial kernel}
-
-\item{L_1}{Number of voxels in region 1}
-
-\item{L_2}{Number of voxels in region 2}
-
-\item{M}{Number of time points from each voxel}
 }
 \value{
 List of 3 components:

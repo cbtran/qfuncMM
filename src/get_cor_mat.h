@@ -1,10 +1,7 @@
-#ifndef _GET_COR_MAT_H
-#define _GET_COR_MAT_H
+#ifndef GET_COR_MAT_H
+#define GET_COR_MAT_H
 #include <RcppArmadillo.h>
 // [[Rcpp::depends(RcppArmadillo)]]
-#include <math.h>
-#include "rbf.h"
-#include "matern.h"
 
 
 //' Compute correlation matrix
@@ -21,30 +18,7 @@
 // [[Rcpp::export()]]
 arma::mat get_cor_mat(std::string corfun_name_string, 
                       arma::mat xSqrd_mat, 
-                      double tau) {
-  arma::mat cormat;
-  if( corfun_name_string.compare("rbf") == 0 )
-  { 
-    cormat = rbf(xSqrd_mat, tau);
-  } 
-  else if( corfun_name_string.compare("matern_5_2") == 0 )
-  { 
-    cormat = matern_5_2(xSqrd_mat, tau); 
-  }
-  else if( corfun_name_string.compare("matern_3_2") == 0 )
-  { 
-    cormat = matern_3_2(xSqrd_mat, tau); 
-  }
-  else if( corfun_name_string.compare("matern_1_2") == 0 )
-  { 
-    cormat = matern_1_2(xSqrd_mat, tau); 
-  }
-  else {
-    Rcpp::Rcout << "Unrecognized Kernel \n";
-  }
-  return cormat;
-  
-}
+                      double tau);
 
 // Compute derivative of correlation matrix w.r.t tau
 // @param corfun_deriv_name_string Choice of kernel function
@@ -53,28 +27,6 @@ arma::mat get_cor_mat(std::string corfun_name_string,
 // @return cormat_deriv Derivative of correlation matrix with respect to \eqn{\tau}
 arma::mat get_cor_mat_deriv(std::string corfun_deriv_name_string,
                             arma::mat xSqrd_mat,
-                            double tau) {
-  arma::mat cormat;
-  if( corfun_deriv_name_string.compare("rbf") == 0 )
-  { 
-    cormat = rbf_deriv(xSqrd_mat, tau);
-  } 
-  else if( corfun_deriv_name_string.compare("matern_5_2") == 0 )
-  { 
-    cormat = matern_5_2_deriv(xSqrd_mat, tau); 
-  }
-  else if( corfun_deriv_name_string.compare("matern_3_2") == 0 )
-  { 
-    cormat = matern_3_2_deriv(xSqrd_mat, tau); 
-  }
-  else if( corfun_deriv_name_string.compare("matern_1_2") == 0 )
-  { 
-    cormat = matern_1_2_deriv(xSqrd_mat, tau); 
-  }
-  else {
-    Rcpp::Rcout << "Unrecognized Kernel \n";
-  }
-  return cormat;
-  
-}
+                            double tau);
+
 #endif

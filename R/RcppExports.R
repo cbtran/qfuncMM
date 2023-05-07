@@ -67,9 +67,6 @@ opt_intra <- function(theta_init, X_region, Z_region, dist_sqrd_mat, time_sqrd_m
 #' @param theta_init unrestricted initialization of parameters  for inter-regional model
 #' @param X Data matrix of signals of 2 regions
 #' @param Z fixed-effects design matrix of 2 regions
-#' @param L_1 Number of voxels in region 1
-#' @param L_2 Number of voxels in region 2
-#' @param M Number of time points from each voxel
 #' @param dist_sqrdMat_1 Block component for that region 1
 #' @param dist_sqrdMat_2 Block component for that region 2
 #' @param kernel_type Choice of spatial kernel
