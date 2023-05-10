@@ -24,47 +24,23 @@ arma::mat kronecker_mmm (const arma::mat& A,
   return V;
 }
 
-arma::mat get_dist_sqrd_mat(int L, int sideLength, Rcpp::NumericVector voxelID)
+
+arma::mat get_dist_sqrd_mat(arma::mat coords)
 {
-  arma::mat distSqrd(L, L, arma::fill::zeros);
+  int n = coords.n_rows;
+  arma::mat result(n, n, arma::fill::zeros);
 
-  int sideLengthSqrd = pow(sideLength, 2);
-
-  for (int i = 0; i < L; i++) {
-    for (int j = 0; j <= i; j++) {
-      // Convert to vector of coordinates assuming column-major order
-      int v1 = voxelID[i];
-      int v1z = v1 % sideLength;
-      int v1y = v1 / sideLength;
-      int v1x = v1 / sideLengthSqrd;
-
-      int v2 = voxelID[j];
-      int v2z = v2 % sideLength;
-      int v2y = v2 / sideLength;
-      int v2x = v2 / sideLengthSqrd;
-
-      distSqrd(i, j) = pow(v1x - v2x, 2) + pow(v1y - v2y, 2) + pow(v1z - v2z, 2);
-    }
+  for (int i = 0; i < n; i++) {
+      for (int j = i + 1; j < n; j++) {
+          arma::vec x_i = coords.row(i).t();
+          arma::vec x_j = coords.row(j).t();
+          double d_ij = sum(square(x_i - x_j));
+          result(i, j) = d_ij;
+          result(j, i) = d_ij;
+      }
   }
-  distSqrd = arma::symmatl(distSqrd);
-  return (distSqrd);
-}
-
-
-arma::mat get_dist_sqrd_mat_from_coord(arma::mat coord_mat) {
-  int L = coord_mat.n_cols; // Number of voxels
-  arma::mat dist_sqrdMat(L, L, arma::fill::zeros);
-  for (int i = 0; i < L; i++) {
-    for (int j = 0; j <= i; j++) {
-      arma::vec v1 = coord_mat.col(i);
-      arma::vec v2 = coord_mat.col(j);
-      arma::vec diff = v1 - v2;
-      dist_sqrdMat(i,j) = pow(arma::norm(diff, 2), 2);
-    }
-  }
-  dist_sqrdMat = arma::symmatl(dist_sqrdMat);
   
-  return (dist_sqrdMat);
+  return result;
 }
 
 arma::vec R_inv_b(const arma::mat& R_chol,

@@ -20,22 +20,13 @@ arma::vec kronecker_mvm(
 arma::mat kronecker_mmm(
   const arma::mat& A, const arma::mat& B, const arma::mat& C);
 
-//' Get distance squared matrix for simulated data
-//' @param L Number of voxels 
-//' @param sideLength side length of that region
-//' @param voxelID ID of sampled voxels
-//' @return Matrix of squared distance between voxels for that region
-//' @export
-// [[Rcpp::export()]]
-arma::mat get_dist_sqrd_mat(int L, int sideLength, Rcpp::NumericVector voxelID);
 
-
-//' Get distance squared matrix for real data
-//' @param coord_mat Matrix with each column is coordinate of each voxel
-//' @return Matrix of squared distance between voxels for that region
-//' @export
+//' Get distance squared matrix for a region
+//' @param coords Matrix of coordinates of voxels. Each row is a voxel.
+//' @return Matrix of squared distances between voxels
+//' @noRd
 // [[Rcpp::export()]]
-arma::mat get_dist_sqrd_mat_from_coord(arma::mat coord_mat);
+arma::mat get_dist_sqrd_mat(arma::mat coords);
 
 // Forward-backward to solve linear system \eqn{R^{-1} * b = z} with Cholesky decomposition
 // @param R_chol Cholesky decomposition of Matrix R

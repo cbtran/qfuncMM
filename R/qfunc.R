@@ -1,0 +1,99 @@
+#' Fit the mixed model
+#'
+#' @param region_list List of region matrices.
+#'   Each region matrix contains signals of the voxels in that region for each
+#'   time point. The number of rows is the number of time points and the number
+#'   of columns is the number of voxels.
+#' @param region_coords List of region coordinates. Each row is a voxel and
+#'   the three columns are x, y, and z coordinates.
+#' @param n_basis Number of B-spline basis.
+#' @param kernel_type Choice of spatial kernel. Default "matern_5_2".
+#'
+#' @useDynLib qfuncMM
+#' @importFrom splines bs
+#' @export
+qfunc <- function(region_list, region_coords,
+                  n_basis = 45, kernel_type = "matern_5_2") {
+
+  # TODO: split validation into a separate function
+  if (length(region_list) == 0) {
+    stop("Must specify at least one region.")
+  }
+  if (length(region_list) != length(region_coords)) {
+    stop("Length of region_list and region_coords must be the same.")
+  }
+
+  n_region <- length(region_list)
+  n_timept <- nrow(region_list[[1]])
+  n_voxel <- vector(length = n_region, mode = "integer")
+  for (i in seq_along(region_list)) {
+    if (!is.matrix(region_list[[i]])) {
+      stop(sprintf("Region %d is not a matrix.", i))
+    }
+    if (!is.matrix(region_coords[[i]])) {
+      stop(sprintf("Region coordinates %d is not a matrix.", i))
+    }
+    if (!is.numeric(region_coords[[i]]) || ncol(region_coords[[i]]) != 3) {
+      stop(sprintf("Region %d: voxels must have three numeric coordinates.", i))
+    }
+    if (nrow(region_list[[i]]) != n_timept) {
+      stop(sprintf("Region %d: inconsistent number of time points (rows)", i))
+    }
+    n_voxel[i] <- ncol(region_list[[i]])
+    if (n_voxel[i] != nrow(region_coords[[i]])) {
+      stop(sprintf("Region %d: Inconsistent number of voxels (cols)", i))
+    }
+  }
+
+  time_sqrd_mat <- outer(seq_len(n_timept), seq_len(n_timept), "-")^2
+
+  stage1_regional <- matrix(nrow = n_region, ncol = 3)
+  stage1_fixed <- vector(length = n_region, mode = "list")
+  for (regid in seq_along(region_list)) {
+    intra <- fit_intra_model(
+      region_list[[regid]], region_coords[[regid]],
+      n_basis, kernel_type, time_sqrd_mat)
+
+    stage1_regional[regid, ] <- intra$intra_param
+    stage1_fixed[[regid]] <- intra$fixed
+  }
+
+  # Result matrix of correlations between regions
+  qfunc_result <- matrix(0, nrow = n_region, ncol = n_region)
+  diag(qfunc_result) <- 1
+
+  # Matrix of asymptotic variances for region pairs
+  asymp_var <- matrix(0, nrow = n_region, ncol = n_region)
+  diag(asymp_var) <- 1
+
+  # Correlation between stage 1 fixed effects
+  # TODO: This is for comparison only.
+  stage1_fixed_cor <- matrix(0, nrow = n_region, ncol = n_region)
+  diag(stage1_fixed_cor) <- 1
+
+  for (reg1 in seq_len(n_region)) {
+    for (reg2 in seq_len(reg1 - 1)) {
+      fixed_cor <- cor(stage1_fixed[[reg1]], stage1_fixed[[reg2]])
+      stage1_fixed_cor[reg1, reg2] <- fixed_cor
+      stage1_fixed_cor[reg2, reg1] <- fixed_cor
+
+      stage2_result <- fit_inter_model(
+        region_list[[reg1]], region_coords[[reg1]],
+        region_list[[reg2]], region_coords[[reg2]],
+        time_sqrd_mat,
+        c(stage1_regional[reg1, ], stage1_regional[reg2, ]),
+        kernel_type)
+
+      qfunc_result[reg1, reg2] <- stage2_result$theta[1]
+      qfunc_result[reg2, reg1] <- stage2_result$theta[1]
+      asymp_var[reg1, reg2] <- stage2_result$asymptotic_var
+      asymp_var[reg2, reg1] <- stage2_result$asymptotic_var
+    }
+  }
+
+  list(
+    cor = qfunc_result,
+    asymp_var = asymp_var,
+    cor_fixed_intra = stage1_fixed_cor
+  )
+}
