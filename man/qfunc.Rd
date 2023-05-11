@@ -4,7 +4,13 @@
 \alias{qfunc}
 \title{Fit the mixed model}
 \usage{
-qfunc(region_list, region_coords, n_basis = 45, kernel_type = "matern_5_2")
+qfunc(
+  region_list,
+  voxel_coords,
+  n_basis = 45,
+  kernel_type = "matern_5_2",
+  verbose = TRUE
+)
 }
 \arguments{
 \item{region_list}{List of region matrices.
@@ -12,12 +18,14 @@ Each region matrix contains signals of the voxels in that region for each
 time point. The number of rows is the number of time points and the number
 of columns is the number of voxels.}
 
-\item{region_coords}{List of region coordinates. Each row is a voxel and
+\item{voxel_coords}{List of region coordinates. Each row is a voxel and
 the three columns are x, y, and z coordinates.}
 
 \item{n_basis}{Number of B-spline basis.}
 
 \item{kernel_type}{Choice of spatial kernel. Default "matern_5_2".}
+
+\item{verbose}{Print progress messages.}
 }
 \description{
 Fit the mixed model

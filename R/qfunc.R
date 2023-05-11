@@ -4,16 +4,17 @@
 #'   Each region matrix contains signals of the voxels in that region for each
 #'   time point. The number of rows is the number of time points and the number
 #'   of columns is the number of voxels.
-#' @param region_coords List of region coordinates. Each row is a voxel and
+#' @param voxel_coords List of region coordinates. Each row is a voxel and
 #'   the three columns are x, y, and z coordinates.
 #' @param n_basis Number of B-spline basis.
 #' @param kernel_type Choice of spatial kernel. Default "matern_5_2".
+#' @param verbose Print progress messages.
 #'
 #' @useDynLib qfuncMM
 #' @importFrom splines bs
 #' @export
 qfunc <- function(region_list, voxel_coords,
-                  n_basis = 45, kernel_type = "matern_5_2") {
+                  n_basis = 45, kernel_type = "matern_5_2", verbose = TRUE) {
 
   # TODO: split validation into a separate function
   if (length(region_list) == 0) {
@@ -45,11 +46,21 @@ qfunc <- function(region_list, voxel_coords,
     }
   }
 
+  if (verbose) {
+    cat("Running Qfunc with", n_region, "regions and",
+      n_timept, "time points.\n")
+  }
+
   time_sqrd_mat <- outer(seq_len(n_timept), seq_len(n_timept), "-")^2
 
   stage1_regional <- matrix(nrow = n_region, ncol = 3)
   stage1_fixed <- vector(length = n_region, mode = "list")
   stage1_bspline <- vector(length = n_region, mode = "list")
+
+  if (verbose) {
+    cat("Stage 1: estimating intra-regional parameters...\n")
+  }
+
   for (regid in seq_along(region_list)) {
     intra <- fit_intra_model(
       region_list[[regid]], voxel_coords[[regid]],
@@ -58,6 +69,10 @@ qfunc <- function(region_list, voxel_coords,
     stage1_regional[regid, ] <- intra$intra_param
     stage1_fixed[[regid]] <- intra$fixed
     stage1_bspline[[regid]] <- intra$bspline_pred
+  }
+
+  if (verbose) {
+    cat("Finished stage 1.\n")
   }
 
   # Result matrix of correlations between regions
@@ -76,6 +91,10 @@ qfunc <- function(region_list, voxel_coords,
   # Correlation between stage 1 B-spline predictions
   stage1_bspline_cor <- matrix(0, nrow = n_region, ncol = n_region)
   diag(stage1_bspline_cor) <- 1
+
+  if (verbose) {
+    cat("Stage 2: estimating inter-regional correlations...\n")
+  }
 
   # Run stage 2 for each pair of regions
   for (reg1 in seq_len(n_region)) {
@@ -100,6 +119,10 @@ qfunc <- function(region_list, voxel_coords,
       asymp_var[reg1, reg2] <- stage2_result$asymptotic_var
       asymp_var[reg2, reg1] <- stage2_result$asymptotic_var
     }
+  }
+
+  if (verbose) {
+    cat("Finished stage 2.\n")
   }
 
   list(
