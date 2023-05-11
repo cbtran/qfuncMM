@@ -12,14 +12,14 @@
 #' @useDynLib qfuncMM
 #' @importFrom splines bs
 #' @export
-qfunc <- function(region_list, region_coords,
+qfunc <- function(region_list, voxel_coords,
                   n_basis = 45, kernel_type = "matern_5_2") {
 
   # TODO: split validation into a separate function
   if (length(region_list) == 0) {
     stop("Must specify at least one region.")
   }
-  if (length(region_list) != length(region_coords)) {
+  if (length(region_list) != length(voxel_coords)) {
     stop("Length of region_list and region_coords must be the same.")
   }
 
@@ -30,17 +30,17 @@ qfunc <- function(region_list, region_coords,
     if (!is.matrix(region_list[[i]])) {
       stop(sprintf("Region %d is not a matrix.", i))
     }
-    if (!is.matrix(region_coords[[i]])) {
+    if (!is.matrix(voxel_coords[[i]])) {
       stop(sprintf("Region coordinates %d is not a matrix.", i))
     }
-    if (!is.numeric(region_coords[[i]]) || ncol(region_coords[[i]]) != 3) {
+    if (!is.numeric(voxel_coords[[i]]) || ncol(voxel_coords[[i]]) != 3) {
       stop(sprintf("Region %d: voxels must have three numeric coordinates.", i))
     }
     if (nrow(region_list[[i]]) != n_timept) {
       stop(sprintf("Region %d: inconsistent number of time points (rows)", i))
     }
     n_voxel[i] <- ncol(region_list[[i]])
-    if (n_voxel[i] != nrow(region_coords[[i]])) {
+    if (n_voxel[i] != nrow(voxel_coords[[i]])) {
       stop(sprintf("Region %d: Inconsistent number of voxels (cols)", i))
     }
   }
@@ -49,13 +49,15 @@ qfunc <- function(region_list, region_coords,
 
   stage1_regional <- matrix(nrow = n_region, ncol = 3)
   stage1_fixed <- vector(length = n_region, mode = "list")
+  stage1_bspline <- vector(length = n_region, mode = "list")
   for (regid in seq_along(region_list)) {
     intra <- fit_intra_model(
-      region_list[[regid]], region_coords[[regid]],
+      region_list[[regid]], voxel_coords[[regid]],
       n_basis, kernel_type, time_sqrd_mat)
 
     stage1_regional[regid, ] <- intra$intra_param
     stage1_fixed[[regid]] <- intra$fixed
+    stage1_bspline[[regid]] <- intra$bspline_pred
   }
 
   # Result matrix of correlations between regions
@@ -66,20 +68,29 @@ qfunc <- function(region_list, region_coords,
   asymp_var <- matrix(0, nrow = n_region, ncol = n_region)
   diag(asymp_var) <- 1
 
+  ## These correlations are for comparison only.
   # Correlation between stage 1 fixed effects
-  # TODO: This is for comparison only.
   stage1_fixed_cor <- matrix(0, nrow = n_region, ncol = n_region)
   diag(stage1_fixed_cor) <- 1
 
+  # Correlation between stage 1 B-spline predictions
+  stage1_bspline_cor <- matrix(0, nrow = n_region, ncol = n_region)
+  diag(stage1_bspline_cor) <- 1
+
+  # Run stage 2 for each pair of regions
   for (reg1 in seq_len(n_region)) {
     for (reg2 in seq_len(reg1 - 1)) {
       fixed_cor <- cor(stage1_fixed[[reg1]], stage1_fixed[[reg2]])
       stage1_fixed_cor[reg1, reg2] <- fixed_cor
       stage1_fixed_cor[reg2, reg1] <- fixed_cor
 
+      bspline_cor <- cor(stage1_bspline[[reg1]], stage1_bspline[[reg2]])
+      stage1_bspline_cor[reg1, reg2] <- bspline_cor
+      stage1_bspline_cor[reg2, reg1] <- bspline_cor
+
       stage2_result <- fit_inter_model(
-        region_list[[reg1]], region_coords[[reg1]],
-        region_list[[reg2]], region_coords[[reg2]],
+        region_list[[reg1]], voxel_coords[[reg1]],
+        region_list[[reg2]], voxel_coords[[reg2]],
         time_sqrd_mat,
         c(stage1_regional[reg1, ], stage1_regional[reg2, ]),
         kernel_type)
@@ -94,6 +105,7 @@ qfunc <- function(region_list, region_coords,
   list(
     cor = qfunc_result,
     asymp_var = asymp_var,
-    cor_fixed_intra = stage1_fixed_cor
+    cor_fixed_intra = stage1_fixed_cor,
+    cor_fixed_bspline = stage1_bspline_cor
   )
 }

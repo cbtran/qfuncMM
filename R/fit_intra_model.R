@@ -89,6 +89,9 @@ fit_intra_model <- function(
     signal ~ -1 + splines::bs(time, df = n_basis, intercept = TRUE),
     data = regiondf)
 
+  # Used for comparison only
+  bspline_pred <- predict(regionfit, data.frame(time = seq_len(n_timept)))
+
   bspline_design <-
     splines::bs(
       rep(seq_len(n_timept), n_voxel), df = n_basis, intercept = TRUE)
@@ -100,5 +103,6 @@ fit_intra_model <- function(
     dist_mat, time_sqrd_mat, n_voxel, n_timept, kernel_type)
 
   list(intra_param = intra$theta,
-       fixed = bspline_design[seq_len(n_timept), ] %*% intra$nu)
+       fixed = bspline_design[seq_len(n_timept), ] %*% intra$nu,
+       bspline_pred = bspline_pred)
 }
