@@ -2,6 +2,8 @@
 
 export(get_cor_mat)
 export(kronecker_mvm)
+export(opt_inter)
+export(opt_intra)
 export(qfunc)
 export(simulate_3_region)
 importFrom(MASS,mvrnorm)

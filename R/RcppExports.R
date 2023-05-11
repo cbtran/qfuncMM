@@ -49,6 +49,7 @@ get_dist_sqrd_mat <- function(coords) {
 #' \item{theta}{estimated intra-regional parameters}
 #' \item{nu}{fixed-effect estimate}
 #' @noRd
+#' @export
 opt_intra <- function(theta_init, X_region, Z_region, dist_sqrd_mat, time_sqrd_mat, L, M, kernel_type) {
     .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, Z_region, dist_sqrd_mat, time_sqrd_mat, L, M, kernel_type)
 }
@@ -66,6 +67,7 @@ opt_intra <- function(theta_init, X_region, Z_region, dist_sqrd_mat, time_sqrd_m
 #' \item{asymptotic_var}{asymptotic variance of transformed correlation coefficient}
 #' \item{rho_transformed}{Fisher transformation of correlation coefficient}
 #' @noRd
+#' @export
 opt_inter <- function(theta_init, X, Z, dist_sqrdMat_1, dist_sqrdMat_2, time_sqrd_mat, stage1_regional, kernel_type) {
     .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, X, Z, dist_sqrdMat_1, dist_sqrdMat_2, time_sqrd_mat, stage1_regional, kernel_type)
 }

@@ -21,6 +21,7 @@
 //' \item{theta}{estimated intra-regional parameters}
 //' \item{nu}{fixed-effect estimate}
 //' @noRd
+//' @export
 // [[Rcpp::export]]
 Rcpp::List opt_intra(const arma::vec& theta_init,
                      const arma::mat& X_region,
@@ -84,6 +85,7 @@ Rcpp::List opt_intra(const arma::vec& theta_init,
 //' \item{asymptotic_var}{asymptotic variance of transformed correlation coefficient}
 //' \item{rho_transformed}{Fisher transformation of correlation coefficient}
 //' @noRd
+//' @export
 // [[Rcpp::export]]
 Rcpp::List opt_inter(const arma::vec& theta_init,
                      const arma::mat& X,
