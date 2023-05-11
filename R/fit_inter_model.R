@@ -130,7 +130,7 @@ fit_inter_model <- function(
     rep(1:0, each = dim(region1_mx)[1] * n_timept),
     rep(0:1, each = dim(region2_mx)[1] * n_timept))
 
-  init <- c(0, 0, 0, -2, mean(region1_mx), mean(region1_mx))
+  init <- c(0, 0, 0, -2, mean(region1_mx), mean(region2_mx))
 
   result <- opt_inter(
     theta_init = init,
