@@ -1,0 +1,5 @@
+^\.devcontainer$
+^\.vscode$
+^compile_flags\.txt$
+^scratch$
+^LICENSE\.md$

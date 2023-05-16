@@ -5,12 +5,13 @@ Version: 0.1.0
 Date: 2022-08-02
 Author: Chau Tran
 Maintainer: Chau Tran <chautran@ucsb.edu>
-Description: Mixed-effects Model for Quantifying Functional Connectivity
+Description: This package implements a mixed-effects model for modeling resting state functional connectivty of the brain.
+    Within-region and between-region connectivity is modeled in a two-stage process using Gaussian processes and ReML.
 License: GPL-2
 Imports: MASS, ggplot2, tidyverse, readr, ggpubr, corrplot, latex2exp, Matrix, xtable, ggridges, splines, Rcpp
 LinkingTo: Rcpp, RcppArmadillo, RcppEnsmallen
 Encoding: UTF-8
 RoxygenNote: 7.2.3
-Suggests: 
+Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

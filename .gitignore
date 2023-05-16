@@ -4,7 +4,6 @@ scratch/
 
 # Prerequisites
 *.d
-*.Rbuildignore
 *.Rhistory
 *.DS_Store
 
