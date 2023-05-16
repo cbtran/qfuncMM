@@ -11,10 +11,8 @@
 #' for Matern 3/2 kernel \deqn{C(x_i,x_j) = (1 + \sqrt{3} \times\tau \times d)\exp(-\sqrt{3}\times\tau \times d),}
 #' and for Matern 5/2 kernel \deqn{C(x_i,x_j) = (1 + \sqrt{3} \times\tau \times d + \sqrt{5}/\sqrt{3} \times\tau^2 \times d^2)\exp(-\sqrt{5}\times\tau \times d),}
 #' with \eqn{d = || x_i - x_j ||_2^2} is the squared distance between locations i and j.
-#' @export
-get_cor_mat <- function(corfun_name_string, xSqrd_mat, tau) {
-    .Call('_qfuncMM_get_cor_mat', PACKAGE = 'qfuncMM', corfun_name_string, xSqrd_mat, tau)
-}
+#' @noRd
+NULL
 
 #' @title Kronecker matrix-vector product (Steeb & Hardy, 2011)
 #' @description \deqn{(A \otimes B)v = \text{vectorise}(BVA^\top)}
@@ -23,10 +21,8 @@ get_cor_mat <- function(corfun_name_string, xSqrd_mat, tau) {
 #' @param v vector
 #' @return Kronecker matrix-vector product
 #' @references Willi-Hans Steeb and Yorick Hardy. Matrix calculus and Kronecker product: a practical approach to linear and multilinear algebra. World Scientific Publishing Company, 2011.
-#' @export
-kronecker_mvm <- function(A, B, v) {
-    .Call('_qfuncMM_kronecker_mvm', PACKAGE = 'qfuncMM', A, B, v)
-}
+#' @noRd
+NULL
 
 #' Get distance squared matrix for a region
 #' @param coords Matrix of coordinates of voxels. Each row is a voxel.
@@ -44,14 +40,13 @@ get_dist_sqrd_mat <- function(coords) {
 #' @param time_sqrd_mat Temporal squared distance matrix
 #' @param L Number of voxels
 #' @param M Number of time points
-#' @param kernel_type Choice of spatial kernel
+#' @param kernel_type_id Choice of spatial kernel
 #' @return List of 2 components:
 #' \item{theta}{estimated intra-regional parameters}
 #' \item{nu}{fixed-effect estimate}
 #' @noRd
-#' @export
-opt_intra <- function(theta_init, X_region, Z_region, dist_sqrd_mat, time_sqrd_mat, L, M, kernel_type) {
-    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, Z_region, dist_sqrd_mat, time_sqrd_mat, L, M, kernel_type)
+opt_intra <- function(theta_init, X_region, Z_region, dist_sqrd_mat, time_sqrd_mat, L, M, kernel_type_id) {
+    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, Z_region, dist_sqrd_mat, time_sqrd_mat, L, M, kernel_type_id)
 }
 
 #' @title Fit inter-regional model using L-BFGS
@@ -60,15 +55,14 @@ opt_intra <- function(theta_init, X_region, Z_region, dist_sqrd_mat, time_sqrd_m
 #' @param Z fixed-effects design matrix of 2 regions
 #' @param dist_sqrdMat_1 Block component for that region 1
 #' @param dist_sqrdMat_2 Block component for that region 2
-#' @param kernel_type Choice of spatial kernel
+#' @param kernel_type_id Choice of spatial kernel
 #' @param stage1_regional Regional parameters from stage 1
 #' @return List of 3 components:
 #' \item{theta}{estimated inter-regional parameters}
 #' \item{asymptotic_var}{asymptotic variance of transformed correlation coefficient}
 #' \item{rho_transformed}{Fisher transformation of correlation coefficient}
 #' @noRd
-#' @export
-opt_inter <- function(theta_init, X, Z, dist_sqrdMat_1, dist_sqrdMat_2, time_sqrd_mat, stage1_regional, kernel_type) {
-    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, X, Z, dist_sqrdMat_1, dist_sqrdMat_2, time_sqrd_mat, stage1_regional, kernel_type)
+opt_inter <- function(theta_init, X, Z, dist_sqrdMat_1, dist_sqrdMat_2, time_sqrd_mat, stage1_regional, kernel_type_id) {
+    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, X, Z, dist_sqrdMat_1, dist_sqrdMat_2, time_sqrd_mat, stage1_regional, kernel_type_id)
 }
 

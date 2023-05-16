@@ -8,7 +8,7 @@
 #' @param dist_sqrd_mat_2 Spatial squared distance matrix of region 2
 #' @param time_sqrd_mat Temporal squared distance matrix
 #' @param gamma_vec Estimated parameters of intra-regional models from 2 regions
-#' @param kernel_type Choice of spatial kernel. Defaul "matern_5_2".
+#' @param kernel_type_id Choice of spatial kernel. Defaul "matern_5_2".
 #' @return List of 2 components:
 #' \item{theta}{estimated inter-regional parameters \eqn{\hat{\rho}, \hat{\tau}_\eta, \hat{k}_\eta, \hat{nugget}, \hat{\mu}_1, \hat{\mu}_2}}
 #' \item{asymptotic_var}{asymptotic variance of transformed correlation coefficient}
@@ -123,7 +123,7 @@ fit_inter_model <- function(
     region2_coords,
     time_sqrd_mat,
     stage1_regional,
-    kernel_type) {
+    kernel_type_id) {
 
   n_timept <- dim(region2_mx)[2]
   fixedfx_design <- cbind(
@@ -140,7 +140,7 @@ fit_inter_model <- function(
     dist_sqrdMat_2 = get_dist_sqrd_mat(region2_coords),
     time_sqrd_mat = time_sqrd_mat,
     stage1_regional = stage1_regional,
-    kernel_type = kernel_type)
+    kernel_type_id = kernel_type_id)
 
   result
 }

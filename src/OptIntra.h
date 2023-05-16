@@ -1,6 +1,7 @@
 #ifndef OPTINTRA_H
 #define OPTINTRA_H
 #include <RcppArmadillo.h>
+#include "get_cor_mat.h"
 
 class OptIntra
 {
@@ -11,17 +12,17 @@ class OptIntra
   int numVoxel_;
   int numTimePt_;
   arma::mat fixedEffect_; // Fixed-effect vector
-  std::string kernelType_; // Choice of spatial kernel
-  
+  KernelType kernelType_; // Choice of spatial kernel
+
 public:
   OptIntra(
     const arma::mat& data,
-    const arma::mat& design, 
-    const arma::mat& distSqrd, 
+    const arma::mat& design,
+    const arma::mat& distSqrd,
     const arma::mat& timeSqrd,
-    int numVoxel, int numTimePt, 
-    const arma::mat& fixedEffect, 
-    std::string kernelType);
+    int numVoxel, int numTimePt,
+    const arma::mat& fixedEffect,
+    KernelType kernelType);
 
   // Compute both objective function and its gradient
   double EvaluateWithGradient(

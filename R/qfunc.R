@@ -15,6 +15,7 @@
 #' @export
 qfunc <- function(region_list, voxel_coords,
                   n_basis = 45, kernel_type = "matern_5_2", verbose = TRUE) {
+  kernel_type_id <- kernel_dict(kernel_type)
 
   # TODO: split validation into a separate function
   if (length(region_list) == 0) {
@@ -64,7 +65,7 @@ qfunc <- function(region_list, voxel_coords,
   for (regid in seq_along(region_list)) {
     intra <- fit_intra_model(
       region_list[[regid]], voxel_coords[[regid]],
-      n_basis, kernel_type, time_sqrd_mat)
+      n_basis, kernel_type_id, time_sqrd_mat)
 
     stage1_regional[regid, ] <- intra$intra_param
     stage1_fixed[[regid]] <- intra$fixed
@@ -99,11 +100,11 @@ qfunc <- function(region_list, voxel_coords,
   # Run stage 2 for each pair of regions
   for (reg1 in seq_len(n_region)) {
     for (reg2 in seq_len(reg1 - 1)) {
-      fixed_cor <- cor(stage1_fixed[[reg1]], stage1_fixed[[reg2]])
+      fixed_cor <- stats::cor(stage1_fixed[[reg1]], stage1_fixed[[reg2]])
       stage1_fixed_cor[reg1, reg2] <- fixed_cor
       stage1_fixed_cor[reg2, reg1] <- fixed_cor
 
-      bspline_cor <- cor(stage1_bspline[[reg1]], stage1_bspline[[reg2]])
+      bspline_cor <- stats::cor(stage1_bspline[[reg1]], stage1_bspline[[reg2]])
       stage1_bspline_cor[reg1, reg2] <- bspline_cor
       stage1_bspline_cor[reg2, reg1] <- bspline_cor
 
@@ -112,7 +113,7 @@ qfunc <- function(region_list, voxel_coords,
         region_list[[reg2]], voxel_coords[[reg2]],
         time_sqrd_mat,
         c(stage1_regional[reg1, ], stage1_regional[reg2, ]),
-        kernel_type)
+        kernel_type_id)
 
       qfunc_result[reg1, reg2] <- stage2_result$theta[1]
       qfunc_result[reg2, reg1] <- stage2_result$theta[1]

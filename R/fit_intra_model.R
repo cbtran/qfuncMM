@@ -15,7 +15,7 @@
 #' @param time_sqrd_mat Temporal squared distance matrix
 #' @param L Number of voxels
 #' @param M Number of time points
-#' @param kernel_type Choice of spatial kernel. Defaul "matern_5_2".
+#' @param kernel_type_id Choice of spatial kernel. Defaul "matern_5_2".
 #' @return List of 2 components:
 #' \item{theta}{estimated intra-regional parameters \eqn{\hat{\phi}_\gamma, \hat{\tau}_\gamma, \hat{k}_\gamma}}
 #' \item{nu}{fixed-effect estimate \eqn{\hat{\nu}}}
@@ -75,7 +75,7 @@ fit_intra_model <- function(
     region_mx,
     region_coords,
     n_basis,
-    kernel_type,
+    kernel_type_id,
     time_sqrd_mat) {
 
   n_timept <- nrow(region_mx)
@@ -85,22 +85,23 @@ fit_intra_model <- function(
     signal = as.numeric(region_mx),
     time = rep(seq_len(n_timept), times = n_voxel))
 
-  regionfit <- lm(
+  regionfit <- stats::lm(
     signal ~ -1 + splines::bs(time, df = n_basis, intercept = TRUE),
     data = regiondf)
 
   # Used for comparison only
-  bspline_pred <- predict(regionfit, data.frame(time = seq_len(n_timept)))
+  bspline_pred <- stats::predict(
+    regionfit, data.frame(time = seq_len(n_timept)))
 
   bspline_design <-
     splines::bs(
       rep(seq_len(n_timept), n_voxel), df = n_basis, intercept = TRUE)
-  param_init <- c(0, 0, 0, coef(regionfit))
+  param_init <- c(0, 0, 0, stats::coef(regionfit))
   dist_mat <- get_dist_sqrd_mat(region_coords)
 
   intra <- opt_intra(
     param_init, matrix(region_mx, ncol = 1), bspline_design,
-    dist_mat, time_sqrd_mat, n_voxel, n_timept, kernel_type)
+    dist_mat, time_sqrd_mat, n_voxel, n_timept, kernel_type_id)
 
   list(intra_param = intra$theta,
        fixed = bspline_design[seq_len(n_timept), ] %*% intra$nu,
