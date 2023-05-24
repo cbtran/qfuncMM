@@ -14,6 +14,7 @@
 #' \item{asymptotic_var}{asymptotic variance of transformed correlation coefficient}
 #' \item{rho_transformed}{Fisher transformation of correlation coefficient}
 #' @useDynLib qfuncMM
+#' @importFrom Rcpp sourceCpp
 #' @examples
 #' L <- 20 # Numbers of voxels
 #' side_length <- 7 # Side length of each region

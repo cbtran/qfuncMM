@@ -22,6 +22,7 @@
 #'
 #' @useDynLib qfuncMM
 #' @importFrom splines bs
+#' @importFrom Rcpp sourceCpp
 #'
 #' @examples
 #' L <- 20 # Numbers of voxels

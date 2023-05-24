@@ -8,7 +8,7 @@ Maintainer: Chau Tran <chautran@ucsb.edu>
 Description: This package implements a mixed-effects model for modeling resting state functional connectivty of the brain.
     Within-region and between-region connectivity is modeled in a two-stage process using Gaussian processes and ReML.
 License: GPL-2
-Imports: MASS, ggplot2, tidyverse, readr, ggpubr, corrplot, latex2exp, Matrix, xtable, ggridges, splines, Rcpp
+Imports: splines, Rcpp
 LinkingTo: Rcpp, RcppArmadillo, RcppEnsmallen
 Encoding: UTF-8
 RoxygenNote: 7.2.3
