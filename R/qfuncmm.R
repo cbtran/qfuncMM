@@ -13,7 +13,7 @@
 #' @useDynLib qfuncMM
 #' @importFrom splines bs
 #' @export
-qfunc <- function(region_list, voxel_coords,
+qfuncmm <- function(region_list, voxel_coords,
                   n_basis = 45, kernel_type = "matern_5_2", verbose = TRUE) {
   kernel_type_id <- kernel_dict(kernel_type)
 
