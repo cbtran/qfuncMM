@@ -12,6 +12,7 @@
 #'
 #' @useDynLib qfuncMM
 #' @importFrom splines bs
+#' @importFrom Rcpp sourceCpp
 #' @export
 qfuncmm <- function(region_list, voxel_coords,
                   n_basis = 45, kernel_type = "matern_5_2", verbose = TRUE) {

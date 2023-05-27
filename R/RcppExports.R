@@ -30,8 +30,8 @@ NULL
 #' @param Z_region fixed-effects design matrix of 1 region
 #' @param voxel_coords Voxel coordinates for the region
 #' @param time_sqrd_mat Temporal squared distance matrix
-#' @param L Number of voxels
-#' @param M Number of time points
+#' @param num_voxel Number of voxels
+#' @param num_timept Number of time points
 #' @param kernel_type_id Choice of spatial kernel
 #' @return List of 2 components:
 #' \item{theta}{estimated intra-regional parameters}
