@@ -20,12 +20,8 @@ arma::mat kronecker_mmm(
   const arma::mat& A, const arma::mat& B, const arma::mat& C);
 
 
-//' Get distance squared matrix for a region
-//' @param coords Matrix of coordinates of voxels. Each row is a voxel.
-//' @return Matrix of squared distances between voxels
-//' @noRd
-// [[Rcpp::export()]]
-arma::mat get_dist_sqrd_mat(arma::mat coords);
+// Get squared distance matrix given the voxel coordinates for a region
+arma::mat squared_distance(arma::mat coords);
 
 // Forward-backward to solve linear system \eqn{R^{-1} * B = Z} with Cholesky decomposition
 // @param R_chol Cholesky decomposition of Matrix R

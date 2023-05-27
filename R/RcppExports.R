@@ -24,19 +24,11 @@ NULL
 #' @noRd
 NULL
 
-#' Get distance squared matrix for a region
-#' @param coords Matrix of coordinates of voxels. Each row is a voxel.
-#' @return Matrix of squared distances between voxels
-#' @noRd
-get_dist_sqrd_mat <- function(coords) {
-    .Call('_qfuncMM_get_dist_sqrd_mat', PACKAGE = 'qfuncMM', coords)
-}
-
 #' @title Fit intra-regional model using L-BFGS
 #' @param theta_init unrestricted initialization of parameters for 1 region
 #' @param X_region Data matrix of signals of 1 region
 #' @param Z_region fixed-effects design matrix of 1 region
-#' @param dist_sqrd_mat Spatial squared distance matrix
+#' @param voxel_coords Voxel coordinates for the region
 #' @param time_sqrd_mat Temporal squared distance matrix
 #' @param L Number of voxels
 #' @param M Number of time points
@@ -45,16 +37,16 @@ get_dist_sqrd_mat <- function(coords) {
 #' \item{theta}{estimated intra-regional parameters}
 #' \item{nu}{fixed-effect estimate}
 #' @noRd
-opt_intra <- function(theta_init, X_region, Z_region, dist_sqrd_mat, time_sqrd_mat, L, M, kernel_type_id) {
-    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, Z_region, dist_sqrd_mat, time_sqrd_mat, L, M, kernel_type_id)
+opt_intra <- function(theta_init, X_region, Z_region, voxel_coords, time_sqrd_mat, num_voxel, num_timept, kernel_type_id) {
+    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, Z_region, voxel_coords, time_sqrd_mat, num_voxel, num_timept, kernel_type_id)
 }
 
 #' @title Fit inter-regional model using L-BFGS
 #' @param theta_init unrestricted initialization of parameters  for inter-regional model
 #' @param X Data matrix of signals of 2 regions
 #' @param Z fixed-effects design matrix of 2 regions
-#' @param dist_sqrdMat_1 Block component for that region 1
-#' @param dist_sqrdMat_2 Block component for that region 2
+#' @param voxel_coords_1 Region 1 voxel coordinates
+#' @param voxel_coords_2 Region 2 voxel coordinates
 #' @param kernel_type_id Choice of spatial kernel
 #' @param stage1_regional Regional parameters from stage 1
 #' @return List of 3 components:
@@ -62,7 +54,7 @@ opt_intra <- function(theta_init, X_region, Z_region, dist_sqrd_mat, time_sqrd_m
 #' \item{asymptotic_var}{asymptotic variance of transformed correlation coefficient}
 #' \item{rho_transformed}{Fisher transformation of correlation coefficient}
 #' @noRd
-opt_inter <- function(theta_init, X, Z, dist_sqrdMat_1, dist_sqrdMat_2, time_sqrd_mat, stage1_regional, kernel_type_id) {
-    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, X, Z, dist_sqrdMat_1, dist_sqrdMat_2, time_sqrd_mat, stage1_regional, kernel_type_id)
+opt_inter <- function(theta_init, X, Z, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1_regional, kernel_type_id) {
+    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, X, Z, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1_regional, kernel_type_id)
 }
 

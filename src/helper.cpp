@@ -25,7 +25,7 @@ arma::mat kronecker_mmm (const arma::mat& A,
 }
 
 
-arma::mat get_dist_sqrd_mat(arma::mat coords)
+arma::mat squared_distance(arma::mat coords)
 {
   int n = coords.n_rows;
   arma::mat result(n, n, arma::fill::zeros);

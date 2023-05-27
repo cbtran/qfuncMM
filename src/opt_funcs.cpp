@@ -13,10 +13,10 @@
 //' @param theta_init unrestricted initialization of parameters for 1 region
 //' @param X_region Data matrix of signals of 1 region
 //' @param Z_region fixed-effects design matrix of 1 region
-//' @param dist_sqrd_mat Spatial squared distance matrix
+//' @param voxel_coords Voxel coordinates for the region
 //' @param time_sqrd_mat Temporal squared distance matrix
-//' @param L Number of voxels
-//' @param M Number of time points
+//' @param num_voxel Number of voxels
+//' @param num_timept Number of time points
 //' @param kernel_type_id Choice of spatial kernel
 //' @return List of 2 components:
 //' \item{theta}{estimated intra-regional parameters}
@@ -26,10 +26,9 @@
 Rcpp::List opt_intra(const arma::vec& theta_init,
                      const arma::mat& X_region,
                      const arma::mat& Z_region,
-                     const arma::mat& dist_sqrd_mat,
+                     const arma::mat& voxel_coords,
                      const arma::mat& time_sqrd_mat,
-                     int L, int M,
-                     int kernel_type_id) {
+                     int num_voxel, int num_timept, int kernel_type_id) {
     // Necessary evil since we can't easily expose enums to R
     KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
 
@@ -40,12 +39,14 @@ Rcpp::List opt_intra(const arma::vec& theta_init,
     arma::mat theta_vec(theta_init.n_elem, 1);
     theta_vec.col(0) = theta_init;
 
+    arma::mat dist_sqrd_mat = squared_distance(voxel_coords);
+
     // Construct the objective function.
     OptIntra opt_intra(X_region,
                         Z_region,
                         dist_sqrd_mat,
                         time_sqrd_mat,
-                        L, M, nu,
+                        num_voxel, num_timept, nu,
                         kernel_type);
 
 
@@ -64,7 +65,7 @@ Rcpp::List opt_intra(const arma::vec& theta_init,
 
     // Return
     return Rcpp::List::create(Rcpp::Named("theta") = theta,
-                                Rcpp::Named("nu") = nu);
+                              Rcpp::Named("nu") = nu);
 }
 
 
@@ -77,8 +78,8 @@ Rcpp::List opt_intra(const arma::vec& theta_init,
 //' @param theta_init unrestricted initialization of parameters  for inter-regional model
 //' @param X Data matrix of signals of 2 regions
 //' @param Z fixed-effects design matrix of 2 regions
-//' @param dist_sqrdMat_1 Block component for that region 1
-//' @param dist_sqrdMat_2 Block component for that region 2
+//' @param voxel_coords_1 Region 1 voxel coordinates
+//' @param voxel_coords_2 Region 2 voxel coordinates
 //' @param kernel_type_id Choice of spatial kernel
 //' @param stage1_regional Regional parameters from stage 1
 //' @return List of 3 components:
@@ -90,8 +91,8 @@ Rcpp::List opt_intra(const arma::vec& theta_init,
 Rcpp::List opt_inter(const arma::vec& theta_init,
                      const arma::mat& X,
                      const arma::mat& Z,
-                     const arma::mat& dist_sqrdMat_1,
-                     const arma::mat& dist_sqrdMat_2,
+                     const arma::mat& voxel_coords_1,
+                     const arma::mat& voxel_coords_2,
                      const arma::mat& time_sqrd_mat,
                      const arma::vec& stage1_regional,
                      int kernel_type_id) {
@@ -102,19 +103,23 @@ Rcpp::List opt_inter(const arma::vec& theta_init,
     arma::mat theta_vec(6, 1);
     theta_vec.col(0) = theta_init;
 
+    arma::mat sqrd_dist_region1 = squared_distance(voxel_coords_1);
+    arma::mat sqrd_dist_region2 = squared_distance(voxel_coords_2);
+
     const arma::mat block_region_1 = arma::kron(
-        get_cor_mat(kernel_type, dist_sqrdMat_1, stage1_regional(0)),
+        get_cor_mat(kernel_type, sqrd_dist_region1, stage1_regional(0)),
         stage1_regional(2) * get_cor_mat(KernelType::Rbf, time_sqrd_mat, stage1_regional(1)));
 
     const arma::mat block_region_2 = arma::kron(
-        get_cor_mat(kernel_type, dist_sqrdMat_2, stage1_regional(3)),
+        get_cor_mat(kernel_type, sqrd_dist_region2, stage1_regional(3)),
         stage1_regional(5) * get_cor_mat(KernelType::Rbf, time_sqrd_mat, stage1_regional(4)));
 
-    int L1 = dist_sqrdMat_1.n_cols;
-    int L2 = dist_sqrdMat_2.n_cols;
-    int M = time_sqrd_mat.n_cols;
+    int num_voxel1 = sqrd_dist_region1.n_cols;
+    int num_voxel2 = sqrd_dist_region2.n_cols;
+    int num_timept = time_sqrd_mat.n_cols;
     // Construct the objective function.
-    OptInter opt_schur_rho_f(X, Z, L1, L2, M, block_region_1, block_region_2, time_sqrd_mat);
+    OptInter opt_schur_rho_f(
+        X, Z, num_voxel1, num_voxel2, num_timept, block_region_1, block_region_2, time_sqrd_mat);
 
     // Create the L_BFGS optimizer with default parameters.
     ens::L_BFGS optimizer(10); // L-BFGS optimizer with 10 memory points
@@ -136,7 +141,7 @@ Rcpp::List opt_inter(const arma::vec& theta_init,
     Rcpp::List asymp_var = asymptotic_variance(block_region_1,
                                                 block_region_2,
                                                 time_sqrd_mat,
-                                                L1, L2, M,
+                                                num_voxel1, num_voxel2, num_timept,
                                                 theta_vec(2),
                                                 theta_vec(1),
                                                 theta_vec(3),
