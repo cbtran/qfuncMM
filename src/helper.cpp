@@ -3,6 +3,10 @@
 #include "rbf.h"
 #include <math.h>
 
+// This function performs the "vec-trick" to compute the kronecker product.
+// Instead of computing (A \otimes B) * v, we compute vec(B * V * A^T), where
+// V is a matrix reshaped from v. This is more efficient than computing
+// the kronecker product directly.
 arma::vec kronecker_mvm (const arma::mat& A,
                          const arma::mat& B,
                          const arma::vec& v) {
@@ -11,6 +15,8 @@ arma::vec kronecker_mvm (const arma::mat& A,
   return arma::vectorise(B * V_mat * A.t());
 }
 
+// This function computes (A \otimes B) * C
+// by applying the vec-trick to each column of C.
 arma::mat kronecker_mmm (const arma::mat& A,
                          const arma::mat& B,
                          const arma::mat& C) {

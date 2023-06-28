@@ -1,5 +1,7 @@
 #include "OptIntra.h"
+
 #include <math.h>
+
 #include "helper.h"
 #include "rbf.h"
 
@@ -7,143 +9,165 @@
  Intra-regional model
 *****************************************************************************/
 
-OptIntra::OptIntra(const arma::mat &data,
-                   const arma::mat &design,
-                   const arma::mat &distSqrd,
-                   const arma::mat &timeSqrd,
-                   int numVoxel,
-                   int numTimePt,
-                   const arma::mat &fixedEffect,
+OptIntra::OptIntra(const arma::mat &data, const arma::mat &distSqrd,
+                   const arma::mat &timeSqrd, int numVoxel, int numTimePt,
                    KernelType kernelType)
     : data_(data),
-      design_(design),
       distSqrd_(distSqrd),
       timeSqrd_(timeSqrd),
       numVoxel_(numVoxel),
       numTimePt_(numTimePt),
-      fixedEffect_(fixedEffect),
-      kernelType_(kernelType)
-{}
+      kernelType_(kernelType) {}
 
+double OptIntra::EvaluateWithGradient(const arma::mat &theta,
+                                      arma::mat &gradient) {
+  using arma::mat;
+  using arma::vec;
 
-// Compute both objective function and its gradient
-double OptIntra::EvaluateWithGradient(
-  const arma::mat &theta_unrestrict, arma::mat &gradient)
-{
-  int length_nu = fixedEffect_.n_rows;
-  fixedEffect_ = theta_unrestrict.tail_rows(length_nu);
+  double scaleSpatial = softplus(theta(0));
+  double scaleTemporal = softplus(theta(1));
+  double varTemporal = softplus(theta(2));
+  double varTemporalNugget = softplus(theta(3));
+  mat timeIdentity = arma::eye(numTimePt_, numTimePt_);
+  mat timeSpaceIdentity =
+      arma::eye(numTimePt_ * numVoxel_, numTimePt_ * numVoxel_);
+  mat dataReshape = arma::reshape(data_, numTimePt_, numVoxel_);
+  mat U = arma::repmat(timeIdentity, numVoxel_, 1);
 
-  // Parameter list:
-  // phi_gamma, tau_gamma, kGammaj
-  // Transform unrestricted parameters to original forms.
-  double phi_gamma = softplus(theta_unrestrict(0));
-  double tau_gamma = softplus(theta_unrestrict(1));
-  double k_gamma = softplus(theta_unrestrict(2));
+  mat timeRbf = rbf(timeSqrd_, scaleTemporal);
+  mat covarSpatial = get_cor_mat(kernelType_, distSqrd_, scaleSpatial);
+  mat covarTemporal = varTemporal * timeRbf + varTemporalNugget * timeIdentity;
 
-  // Create necessary components in likelihood evaluation.
-  int N = data_.n_rows;
-  arma::mat r_region = data_ - design_ * fixedEffect_;
-  arma::mat I = arma::eye(N,N);
+  vec temporalEigval, spatialEigval;
+  mat temporalEigvec, spatialEigvec;
+  arma::eig_sym(temporalEigval, temporalEigvec, covarTemporal);
+  arma::eig_sym(spatialEigval, spatialEigvec, covarSpatial);
+  vec eigen = arma::kron(spatialEigval, temporalEigval) + 1;
+  vec eigenInv = 1 / eigen;
 
-  // log-likelihood components
-  double l1, l2, l3;
+  mat vInvU = U;
+  vInvU.each_col([&spatialEigvec, &temporalEigvec, &eigenInv](arma::vec &uCol) {
+    uCol = kronecker_mvm(
+        spatialEigvec, temporalEigvec,
+        eigenInv % kronecker_mvm(spatialEigvec.t(), temporalEigvec.t(), uCol));
+  });
+  mat UtVinvU = U.t() * vInvU;
+  mat G = vInvU * arma::inv_sympd(UtVinvU);
+  vec etaTildeStar = G.t() * data_;
 
-  // Construct the covariance matrices
+  vec dataCentered = data_ - U * etaTildeStar;
+  vec vInvCentered =
+      kronecker_mvm(spatialEigvec, temporalEigvec,
+                    eigenInv % kronecker_mvm(spatialEigvec.t(),
+                                             temporalEigvec.t(), dataCentered));
+  vec qdr = dataCentered.t() * vInvCentered;
+  mat logreml3mat = (numVoxel_ - 1) * numTimePt_ * log(qdr);
+  double logreml3 = logreml3mat(0, 0);
 
-  // Block matrices of B(m1, m2)
-  arma::mat B_Region = k_gamma * rbf(timeSqrd_, tau_gamma);
-  arma::mat dB_dk_gamma = logistic(theta_unrestrict(2)) * rbf(timeSqrd_, tau_gamma);
-  arma::mat dB_dtau_gamma = k_gamma * (logistic(theta_unrestrict(1)) * rbf_deriv(timeSqrd_, tau_gamma)) % B_Region;
+  double logreml1 = arma::accu(arma::log(eigen));
+  double logreml2 = arma::log_det_sympd(UtVinvU);
 
-  arma::vec eigval_B;
-  arma::mat eigvec_B;
+  double logremlval = 0.5 * (logreml1 + logreml2 + logreml3);
 
-  arma::eig_sym(eigval_B, eigvec_B, B_Region);
+  // Gradients
+  const mat &dTemporalDvar = timeRbf;
+  mat dTemporalDscale = varTemporal * rbf_deriv(timeSqrd_, scaleTemporal);
+  mat dSpatialDscale = get_cor_mat_deriv(kernelType_, distSqrd_, scaleSpatial);
 
-  // Block matrices of C(v1, v2)
-  arma::mat C_Region = get_cor_mat(kernelType_, distSqrd_, phi_gamma);
-  arma::mat dC_dphi_gamma = logistic(theta_unrestrict(0)) * get_cor_mat_deriv(kernelType_, distSqrd_, phi_gamma);
+  // mat dVdVarTemporal = arma::kron(covarSpatial, dTemporalDvar);
+  // mat dVdVarTemporalNugget = arma::kron(covarSpatial, timeIdentity);
+  // mat dVdScaleTemporal = arma::kron(covarSpatial, dTemporalDscale);
+  // mat dVdScaleSpatial = arma::kron(dSpatialDscale, covarTemporal);
 
-  arma::vec eigval_C;
-  arma::mat eigvec_C;
+  // The calls to diagvec are delayed
+  // so this does not compute the entire matrix product to just get the
+  // diagonal.
+  mat temporalVarEig = temporalEigvec.t() * dTemporalDvar * temporalEigvec;
+  mat temporalScaleEig = temporalEigvec.t() * dTemporalDscale * temporalEigvec;
+  mat temporalCovarEig = temporalEigvec.t() * covarTemporal * temporalEigvec;
+  mat spatialCovarEig = spatialEigvec.t() * covarSpatial * spatialEigvec;
+  mat spatialScaleEig = spatialEigvec.t() * dSpatialDscale * spatialEigvec;
 
-  arma::eig_sym(eigval_C, eigvec_C, C_Region);
+  mat eigvalOuterInv = arma::reshape(eigenInv, numTimePt_, numVoxel_);
+  double tracedVdVarTemporal =
+      arma::dot(arma::diagvec(spatialCovarEig),
+                eigvalOuterInv.t() * arma::diagvec(temporalVarEig));
+  double tracedVdVarTemporalNugget =
+      arma::dot(arma::diagvec(spatialCovarEig), arma::sum(eigvalOuterInv, 0));
+  double tracedVdScaleTemporal =
+      arma::dot(arma::diagvec(spatialCovarEig),
+                eigvalOuterInv.t() * arma::diagvec(temporalScaleEig));
+  double tracedVdScaleSpatial =
+      arma::dot(arma::diagvec(spatialScaleEig),
+                eigvalOuterInv.t() * arma::diagvec(temporalCovarEig));
 
-  // V matrix.
-  arma::vec lambda_inv = 1. / (arma::kron(eigval_C, eigval_B) + 1.);
-  arma::mat VInv_r_region = kronecker_mvm(eigvec_C, eigvec_B, lambda_inv % kronecker_mvm(eigvec_C.t(), eigvec_B.t(), r_region)) ;
+  // Second part
+  double trace2VarTemporal =
+      arma::trace(G.t() * kronecker_mmm(covarSpatial, dTemporalDvar, vInvU));
+  double trace2VarTemporalNugget =
+      arma::trace(G.t() * kronecker_mmm(covarSpatial, timeIdentity, vInvU));
+  double trace2ScaleTemporal =
+      arma::trace(G.t() * kronecker_mmm(covarSpatial, dTemporalDscale, vInvU));
+  double trace2ScaleSpatial =
+      arma::trace(G.t() * kronecker_mmm(dSpatialDscale, covarTemporal, vInvU));
 
-  arma::mat VInv_Z_region = design_;
-  VInv_Z_region = VInv_Z_region.each_col( [&eigvec_C, &eigvec_B, &lambda_inv](arma::vec& a){
-    a = kronecker_mvm(eigvec_C, eigvec_B, lambda_inv % kronecker_mvm(eigvec_C.t(), eigvec_B.t(), a) );
-    });
+  // Third part
+  mat dataTemporalVar1 =
+      vInvCentered.t() *
+      kronecker_mvm(covarSpatial, dTemporalDvar, vInvCentered);
+  mat dataTemporalVar2 =
+      2 * vInvCentered.t() * U *
+      (-G.t() * kronecker_mvm(covarSpatial, dTemporalDvar, vInvCentered));
+  double dataTemporalVarNum = dataTemporalVar1(0, 0) + dataTemporalVar2(0, 0);
 
+  mat dataTemporalVarNugget1 =
+      vInvCentered.t() *
+      kronecker_mvm(covarSpatial, timeIdentity, vInvCentered);
+  mat dataTemporalVarNugget2 =
+      2 * vInvCentered.t() * U *
+      (-G.t() * kronecker_mvm(covarSpatial, timeIdentity, vInvCentered));
+  double dataTemporalVarNuggetNum =
+      dataTemporalVarNugget1(0, 0) + dataTemporalVarNugget2(0, 0);
 
-  // log determinant of V
-  l1 = arma::sum(arma::log(1./lambda_inv));
+  mat dataTemporalScale1 =
+      vInvCentered.t() *
+      kronecker_mvm(covarSpatial, dTemporalDscale, vInvCentered);
+  mat dataTemporalScale2 =
+      2 * vInvCentered.t() * U *
+      (-G.t() * kronecker_mvm(covarSpatial, dTemporalDscale, vInvCentered));
+  double dataTemporalScaleNum =
+      dataTemporalScale1(0, 0) + dataTemporalScale2(0, 0);
 
-  // log determinant of Z.t() * VInv * Z
-  l2 = arma::log_det_sympd(design_.t() * VInv_Z_region);
+  mat dataSpatialScale1 =
+      vInvCentered.t() *
+      kronecker_mvm(dSpatialDscale, covarTemporal, vInvCentered);
+  mat dataSpatialScale2 =
+      2 * vInvCentered.t() * U *
+      (-G.t() * kronecker_mvm(dSpatialDscale, covarTemporal, vInvCentered));
+  double dataSpatialScaleNum =
+      dataSpatialScale1(0, 0) + dataSpatialScale2(0, 0);
 
-  // quadratic form of residuals
-  arma::mat qdr = r_region.t() * VInv_r_region;
-  l3 = log(qdr(0,0));
+  mat quadraticMat = dataCentered.t() * vInvCentered;
+  double quadratic = quadraticMat(0, 0);
+  gradient(0) =
+      0.5 * (tracedVdScaleSpatial - trace2ScaleSpatial -
+             dataSpatialScaleNum * (numVoxel_ - 1) * numTimePt_ / quadratic);
+  gradient(1) =
+      0.5 * (tracedVdScaleTemporal - trace2ScaleTemporal -
+             dataTemporalScaleNum * (numVoxel_ - 1) * numTimePt_ / quadratic);
+  gradient(2) =
+      0.5 * (tracedVdVarTemporal - trace2VarTemporal -
+             dataTemporalVarNum * (numVoxel_ - 1) * numTimePt_ / quadratic);
+  gradient(3) = 0.5 * (tracedVdVarTemporalNugget - trace2VarTemporalNugget -
+                       dataTemporalVarNuggetNum * (numVoxel_ - 1) * numTimePt_ /
+                           quadratic);
 
+  //   std::cout << "=== New ===\n";
+  //   std::cout << gradient(0) << " " << gradient(1) << " " << gradient(2)
+  //             << " " << arma::norm(gradient) << std::endl;
+  //   std::cout << "logreml: " << logremlval << std::endl;
+  // std::cout << scaleSpatial << " " << scaleTemporal << " " << varTemporal <<
+  // " " << varTemporalNugget << std::endl;
 
-  double result = 0.5 * (l1 + l2 + (numVoxel_*numTimePt_ - length_nu) * l3);
-
-
-  // Gradient of component 1: log_det_sympd(Z.t() * VInv * Z)
-  arma::vec comp1(3);
-  arma::mat HInv = arma::inv_sympd(design_.t() * VInv_Z_region);
-  arma::mat dV_phi_gamma_Z = kronecker_mmm(dC_dphi_gamma, B_Region, VInv_Z_region);
-  arma::mat dV_tau_gamma_Z = kronecker_mmm(C_Region, dB_dtau_gamma, VInv_Z_region);
-  arma::mat dV_kGammaj_Z = kronecker_mmm(C_Region, dB_dk_gamma, VInv_Z_region);
-
-  comp1(0) = arma::trace(-HInv * (VInv_Z_region.t() * dV_phi_gamma_Z));
-  comp1(1) = arma::trace(-HInv * (VInv_Z_region.t() * dV_tau_gamma_Z));
-  comp1(2) = arma::trace(-HInv * (VInv_Z_region.t() * dV_kGammaj_Z));
-
-  // Gradient of component 2: log_det_sympd(V)
-  arma::vec comp2(3);
-  arma::vec dC_phi_temp = arma::kron(arma::diagvec(eigvec_C.t() * dC_dphi_gamma * eigvec_C),
-                                      arma::diagvec(eigvec_B.t() * B_Region * eigvec_B) );
-  comp2(0) = arma::sum(lambda_inv % dC_phi_temp);
-
-  arma::vec dB_tau_temp = arma::kron(arma::diagvec(eigvec_C.t() * C_Region * eigvec_C),
-                                      arma::diagvec(eigvec_B.t() * dB_dtau_gamma * eigvec_B) );
-  comp2(1) = arma::sum(lambda_inv % dB_tau_temp);
-
-  arma::vec dB_k_temp = arma::kron(arma::diagvec(eigvec_C.t() * C_Region * eigvec_C),
-                                    arma::diagvec(eigvec_B.t() * dB_dk_gamma * eigvec_B) );
-  comp2(2) = arma::sum(lambda_inv % dB_k_temp);
-
-  // Gradient of component 3: r.t() * VInv * r
-  // w.r.t. theta.
-  arma::vec comp3_1(3);
-  arma::mat qdr_phi_gamma = -VInv_r_region.t() * kronecker_mvm(dC_dphi_gamma, B_Region, VInv_r_region);
-  arma::mat qdr_tau_gamma = -VInv_r_region.t() * kronecker_mvm(C_Region, dB_dtau_gamma, VInv_r_region) ;
-  arma::mat qdr_k_gamma = -VInv_r_region.t() * kronecker_mvm(C_Region, dB_dk_gamma, VInv_r_region);
-
-  comp3_1(0)= qdr_phi_gamma(0,0)/qdr(0,0);
-  comp3_1(1)= qdr_tau_gamma(0,0)/qdr(0,0);
-  comp3_1(2)= qdr_k_gamma(0,0)/qdr(0,0);
-
-  comp3_1 = (numVoxel_ * numTimePt_ - length_nu) * comp3_1;
-
-  // w.r.t. nu
-  arma::vec comp3_2(length_nu);
-  arma::mat comp3_2_temp = -2 * design_.t() * VInv_r_region;
-  for (int i = 0; i < length_nu; i++){
-    comp3_2(i) = comp3_2_temp(i,0)/qdr(0,0);
-  }
-  comp3_2 = (numVoxel_ * numTimePt_ - length_nu) * comp3_2;
-
-
-  // theta gradients
-  gradient.head_rows(3) = 0.5 * (comp1 + comp2 + comp3_1);
-
-  // nu gradients
-  gradient.tail_rows(length_nu) = 0.5 * comp3_2;
-  return (result);
+  return logremlval;
 }
