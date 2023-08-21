@@ -154,10 +154,10 @@ double OptIntraOld::EvaluateWithGradient(const arma::mat &theta_unrestrict,
   // theta gradients
   gradient.head_rows(3) = 0.5 * (comp1 + comp2 + comp3_1);
 
-  // std::cout << "=== Old ===\n";
-  // std::cout << gradient(0) << " " << gradient(1) << " " << gradient(2)
-  //           << " " << arma::norm(gradient) << std::endl;
-  // std::cout << "logreml: " << result << std::endl;
+//   std::cout << "=== Old ===\n";
+//   std::cout << gradient(0) << " " << gradient(1) << " " << gradient(2)
+//             << " " << arma::norm(gradient) << std::endl;
+//   std::cout << "logreml: " << result << std::endl;
 
   // nu gradients
   gradient.tail_rows(length_nu) = 0.5 * comp3_2;

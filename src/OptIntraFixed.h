@@ -1,10 +1,10 @@
-#ifndef OPTINTRA_H
-#define OPTINTRA_H
+#ifndef OPTINTRAFIXED_H
+#define OPTINTRAFIXED_H
 #include <RcppArmadillo.h>
 
 #include "get_cor_mat.h"
 
-class OptIntra {
+class OptIntraFixed {
   const arma::mat& data_;      // The data matrix.
   const arma::mat& distSqrd_;  // Square spatial distance matrix
   const arma::mat& timeSqrd_;  // Square temporal distance matrix
@@ -12,11 +12,12 @@ class OptIntra {
   int numTimePt_;
   KernelType kernelType_;  // Choice of spatial kernel
   double noiseVarianceEstimate_;
+  const arma::vec& thetaFixed_;
 
  public:
-  OptIntra(const arma::mat& data, const arma::mat& distSqrd,
+  OptIntraFixed(const arma::mat& data, const arma::mat& distSqrd,
            const arma::mat& timeSqrd, int numVoxel, int numTimePt,
-           KernelType kernelType);
+           KernelType kernelType, const arma::vec& thetaFixed);
 
   // Compute objective function update gradient
   double EvaluateWithGradient(const arma::mat& theta, arma::mat& gradient);

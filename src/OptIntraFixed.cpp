@@ -1,4 +1,4 @@
-#include "OptIntra.h"
+#include "OptIntraFixed.h"
 
 #include <math.h>
 
@@ -9,26 +9,27 @@
  Intra-regional model
 *****************************************************************************/
 
-OptIntra::OptIntra(const arma::mat &data, const arma::mat &distSqrd,
+OptIntraFixed::OptIntraFixed(const arma::mat &data, const arma::mat &distSqrd,
                    const arma::mat &timeSqrd, int numVoxel, int numTimePt,
-                   KernelType kernelType)
+                   KernelType kernelType, const arma::vec &thetaFixed)
     : data_(data),
       distSqrd_(distSqrd),
       timeSqrd_(timeSqrd),
       numVoxel_(numVoxel),
       numTimePt_(numTimePt),
       kernelType_(kernelType),
-      noiseVarianceEstimate_(-1) {}
+      noiseVarianceEstimate_(-1),
+      thetaFixed_(thetaFixed) {}
 
-double OptIntra::EvaluateWithGradient(const arma::mat &theta,
+double OptIntraFixed::EvaluateWithGradient(const arma::mat &theta,
                                       arma::mat &gradient) {
   using arma::mat;
   using arma::vec;
 
-  double scaleSpatial = softplus(theta(0));
-  double scaleTemporal = softplus(theta(1));
-  double varTemporal = softplus(theta(2));
-  double varTemporalNugget = softplus(theta(3));
+  double scaleSpatial = thetaFixed_(0);
+  double scaleTemporal = thetaFixed_(1);
+  double varTemporal = softplus(arma::as_scalar(theta));
+  double varTemporalNugget = thetaFixed_(2);
 //   std::cout << "=== Theta ===\n"
 //             << scaleSpatial << " " << scaleTemporal << " " << varTemporal << " "
 //             << varTemporalNugget << std::endl;
@@ -154,25 +155,12 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
   mat quadraticMat = dataCentered.t() * vInvCentered;
   noiseVarianceEstimate_ = quadraticMat(0, 0) / ((numVoxel_ - 1) * numTimePt_);
   gradient(0) = 0.5 *
-                (tracedVdScaleSpatial - trace2ScaleSpatial -
-                 dataSpatialScaleNum / noiseVarianceEstimate_) *
-                logistic(scaleSpatial);
-  gradient(1) = 0.5 *
-                (tracedVdScaleTemporal - trace2ScaleTemporal -
-                 dataTemporalScaleNum / noiseVarianceEstimate_) *
-                logistic(scaleTemporal);
-  gradient(2) = 0.5 *
                 (tracedVdVarTemporal - trace2VarTemporal -
                  dataTemporalVarNum / noiseVarianceEstimate_) *
                 logistic(varTemporal);
-  gradient(3) = 0.5 *
-                (tracedVdVarTemporalNugget - trace2VarTemporalNugget -
-                 dataTemporalVarNuggetNum / noiseVarianceEstimate_) *
-                logistic(varTemporalNugget);
 
 //   std::cout << "=== Gradient ===\n";
-//   std::cout << gradient(0) << " " << gradient(1) << " " << gradient(2) << " "
-//             << gradient(3) << " " << arma::norm(gradient) << std::endl;
+//   std::cout << gradient(0) << " " << arma::norm(gradient) << std::endl;
 //   std::cout << "logreml: " << logremlval << std::endl;
   // std::cout << scaleSpatial << " " << scaleTemporal << " " << varTemporal <<
   // " " << varTemporalNugget << std::endl;
@@ -180,7 +168,7 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
   return logremlval;
 }
 
-double OptIntra::GetNoiseVarianceEstimate() {
+double OptIntraFixed::GetNoiseVarianceEstimate() {
   if (noiseVarianceEstimate_ < 0) {
     Rcpp::stop(
         "Noise variance estimate not computed yet. You must optimize first.");

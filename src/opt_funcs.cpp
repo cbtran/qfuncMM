@@ -3,6 +3,7 @@
 #include "OptInter.h"
 #include "OptIntra.h"
 #include "OptIntraOld.h"
+#include "OptIntraFixed.h"
 #include "get_cor_mat.h"
 #include "helper.h"
 // [[Rcpp::depends(RcppEnsmallen)]]
@@ -85,12 +86,50 @@ Rcpp::List opt_intra_new(const arma::vec& theta_init, const arma::mat& X_region,
   optimizer.MaxIterations() = 100;
   optimizer.MaxLineSearchTrials() = 10;
   optimizer.MinGradientNorm() = 1e-4;
+//   optimizer.MaxStep() = 0.5;
 
   // // Run the optimization
   optimizer.Optimize(opt_intra, theta);
   theta = softplus(theta);
 
-  return Rcpp::List::create(Rcpp::Named("theta") = theta);
+  return Rcpp::List::create(
+    Rcpp::Named("theta") = theta,
+    Rcpp::Named("var_noise") = opt_intra.GetNoiseVarianceEstimate());
+}
+
+// For testing: optimize one parameter holding others fixed
+Rcpp::List opt_intra_fixed(const arma::vec& theta_init,
+                           const arma::vec& theta_fixed,
+                           const arma::mat& X_region,
+                           const arma::mat& voxel_coords,
+                           const arma::mat& time_sqrd_mat, int num_voxel,
+                           int num_timept, int kernel_type_id) {
+  // Necessary evil since we can't easily expose enums to R
+  KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
+
+  // Update basis coefficents
+  arma::mat theta = theta_init;
+
+  arma::mat dist_sqrd_mat = squared_distance(voxel_coords);
+
+  // Construct the objective function.
+  OptIntraFixed opt_intra(X_region, dist_sqrd_mat, time_sqrd_mat, num_voxel,
+                          num_timept, kernel_type, theta_fixed);
+
+  // Create the L_BFGS optimizer with default parameters.
+  ens::L_BFGS optimizer(20);
+  optimizer.MaxIterations() = 100;
+  optimizer.MaxLineSearchTrials() = 10;
+  optimizer.MinGradientNorm() = 1e-4;
+//   optimizer.MaxStep() = 0.5;
+
+  // // Run the optimization
+  optimizer.Optimize(opt_intra, theta);
+  theta = softplus(theta);
+
+  return Rcpp::List::create(
+    Rcpp::Named("theta") = theta,
+    Rcpp::Named("var_noise") = opt_intra.GetNoiseVarianceEstimate());
 }
 
 /*****************************************************************************
@@ -99,7 +138,7 @@ Rcpp::List opt_intra_new(const arma::vec& theta_init, const arma::mat& X_region,
 
 //' @title Fit inter-regional model using L-BFGS
 //' @param theta_init unrestricted initialization of parameters for
-//  inter-regional model
+//'  inter-regional model
 //' @param X Data matrix of signals of 2 regions
 //' @param Z fixed-effects design matrix of 2 regions
 //' @param voxel_coords_1 Region 1 voxel coordinates
@@ -109,7 +148,7 @@ Rcpp::List opt_intra_new(const arma::vec& theta_init, const arma::mat& X_region,
 //' @return List of 3 components:
 //'\item{theta}{estimated inter-regional parameters}
 //'\item{asymptotic_var}{asymptotic variance of transformed correlation
-//     coefficient}
+//'     coefficient}
 //' \item{rho_transformed}{Fisher transformation of correlation coefficient}
 //' @noRd
 // [[Rcpp::export]]

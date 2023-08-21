@@ -24,21 +24,6 @@ NULL
 #' @noRd
 NULL
 
-#' @title Fit inter-regional model using L-BFGS
-#' @param theta_init unrestricted initialization of parameters for
-NULL
-
-#' @param X Data matrix of signals of 2 regions
-#' @param Z fixed-effects design matrix of 2 regions
-#' @param voxel_coords_1 Region 1 voxel coordinates
-#' @param voxel_coords_2 Region 2 voxel coordinates
-#' @param kernel_type_id Choice of spatial kernel
-#' @param stage1_regional Regional parameters from stage 1
-#' @return List of 3 components:
-#'\item{theta}{estimated inter-regional parameters}
-#'\item{asymptotic_var}{asymptotic variance of transformed correlation
-NULL
-
 #' @title Fit intra-regional model using L-BFGS
 #' @param theta_init unrestricted initialization of parameters for 1 region
 #' @param X_region Data matrix of signals of 1 region
@@ -60,6 +45,19 @@ opt_intra_new <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, num
     .Call('_qfuncMM_opt_intra_new', PACKAGE = 'qfuncMM', theta_init, X_region, voxel_coords, time_sqrd_mat, num_voxel, num_timept, kernel_type_id)
 }
 
+#' @title Fit inter-regional model using L-BFGS
+#' @param theta_init unrestricted initialization of parameters for
+#'  inter-regional model
+#' @param X Data matrix of signals of 2 regions
+#' @param Z fixed-effects design matrix of 2 regions
+#' @param voxel_coords_1 Region 1 voxel coordinates
+#' @param voxel_coords_2 Region 2 voxel coordinates
+#' @param kernel_type_id Choice of spatial kernel
+#' @param stage1_regional Regional parameters from stage 1
+#' @return List of 3 components:
+#'\item{theta}{estimated inter-regional parameters}
+#'\item{asymptotic_var}{asymptotic variance of transformed correlation
+#'     coefficient}
 #' \item{rho_transformed}{Fisher transformation of correlation coefficient}
 #' @noRd
 opt_inter <- function(theta_init, X, Z, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1_regional, kernel_type_id) {
