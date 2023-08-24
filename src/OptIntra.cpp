@@ -35,7 +35,7 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
   mat timeIdentity = arma::eye(numTimePt_, numTimePt_);
   mat timeSpaceIdentity =
       arma::eye(numTimePt_ * numVoxel_, numTimePt_ * numVoxel_);
-  mat dataReshape = arma::reshape(data_, numTimePt_, numVoxel_);
+//   mat dataReshape = arma::reshape(data_, numTimePt_, numVoxel_);
   mat U = arma::repmat(timeIdentity, numVoxel_, 1);
 
   mat timeRbf = rbf(timeSqrd_, scaleTemporal);

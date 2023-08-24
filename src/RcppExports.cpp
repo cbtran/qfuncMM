@@ -65,11 +65,31 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// opt_inter_new
+Rcpp::List opt_inter_new(const arma::vec& theta_init, const arma::mat& dataRegion1, const arma::mat& dataRegion2, const arma::mat& voxel_coords_1, const arma::mat& voxel_coords_2, const arma::mat& time_sqrd_mat, const arma::vec& stage1ParamsRegion1, const arma::vec& stage1ParamsRegion2, int kernel_type_id);
+RcppExport SEXP _qfuncMM_opt_inter_new(SEXP theta_initSEXP, SEXP dataRegion1SEXP, SEXP dataRegion2SEXP, SEXP voxel_coords_1SEXP, SEXP voxel_coords_2SEXP, SEXP time_sqrd_matSEXP, SEXP stage1ParamsRegion1SEXP, SEXP stage1ParamsRegion2SEXP, SEXP kernel_type_idSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type theta_init(theta_initSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type dataRegion1(dataRegion1SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type dataRegion2(dataRegion2SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type voxel_coords_1(voxel_coords_1SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type voxel_coords_2(voxel_coords_2SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type time_sqrd_mat(time_sqrd_matSEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type stage1ParamsRegion1(stage1ParamsRegion1SEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type stage1ParamsRegion2(stage1ParamsRegion2SEXP);
+    Rcpp::traits::input_parameter< int >::type kernel_type_id(kernel_type_idSEXP);
+    rcpp_result_gen = Rcpp::wrap(opt_inter_new(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_qfuncMM_opt_intra", (DL_FUNC) &_qfuncMM_opt_intra, 8},
     {"_qfuncMM_opt_intra_new", (DL_FUNC) &_qfuncMM_opt_intra_new, 7},
     {"_qfuncMM_opt_inter", (DL_FUNC) &_qfuncMM_opt_inter, 8},
+    {"_qfuncMM_opt_inter_new", (DL_FUNC) &_qfuncMM_opt_inter_new, 9},
     {NULL, NULL, 0}
 };
 
