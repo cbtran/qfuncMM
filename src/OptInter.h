@@ -28,8 +28,11 @@ public:
            const arma::mat& timeSqrd);
 
   // Compute both objective function and its gradient
-  double Evaluate(
-    const arma::mat &theta_unrestrict);
+  double EvaluateWithGradient(
+      const arma::mat &theta_unrestrict, arma::mat &gradient);
+
+  // Compute both objective function and its gradient
+  double Evaluate(const arma::mat &theta);
 };
 
 #endif

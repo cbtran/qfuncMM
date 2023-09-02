@@ -68,3 +68,7 @@ opt_inter_new <- function(theta_init, dataRegion1, dataRegion2, voxel_coords_1, 
     .Call('_qfuncMM_opt_inter_new', PACKAGE = 'qfuncMM', theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id)
 }
 
+opt_inter_vals <- function(x, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id) {
+    .Call('_qfuncMM_opt_inter_vals', PACKAGE = 'qfuncMM', x, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id)
+}
+
