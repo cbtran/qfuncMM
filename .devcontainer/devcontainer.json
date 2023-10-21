@@ -3,7 +3,7 @@
 
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "rstudio",
-	
+
 	// rstudio port forwarding
 	"forwardPorts": [8787],
 	"portsAttributes": {
@@ -14,13 +14,13 @@
 		}
 	},
 
-	"workspaceFolder": "/home/rstudio/work",
+	"workspaceFolder": "/home/rstudio/qfuncMM",
 	"remoteUser": "rstudio",
 
 	"customizations": {
 
 		"vscode": {
-			"settings": { 
+			"settings": {
 				"python.defaultInterpreterPath": "/opt/conda/bin/python",
 				"r.rterm.linux": "/opt/conda/bin/radian",
 				"r.rpath.linux": "/usr/local/bin/R",

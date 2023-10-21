@@ -4,7 +4,7 @@ services:
 
   rstudio:
 
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
 
@@ -13,4 +13,4 @@ services:
       ROOT: 'TRUE'
 
     volumes:
-      - ..:/home/rstudio/work:cached
+      - ..:/home/rstudio/qfuncMM:cached

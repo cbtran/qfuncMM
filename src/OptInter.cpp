@@ -1,7 +1,9 @@
 #include "OptInter.h"
 #include <math.h>
+#include "Rcpp/exceptions.h"
 #include "rbf.h"
 #include "helper.h"
+#include "OptException.h"
 
 /*****************************************************************************
  Inter-regional model
@@ -19,13 +21,11 @@ OptInter::OptInter(const arma::mat& dataRegion1, const arma::mat& dataRegion2,
       numVoxelRegion1_(dataRegion1.n_cols),
       numVoxelRegion2_(dataRegion2.n_cols),
       numTimePt_(dataRegion1.n_rows),
-      // Stage 1 regional parameter list:
-      // phi_gamma, tau_gamma, k_gamma, nugget_gamma, noise_variance
-      stage1ParamsRegion1_(stage1ParamsRegion1),
-      stage1ParamsRegion2_(stage1ParamsRegion2),
       spaceTimeKernelRegion1_(spaceTimeKernelRegion1),
       spaceTimeKernelRegion2_(spaceTimeKernelRegion2),
-      timeSqrd_(timeSqrd) {
+      timeSqrd_(timeSqrd),
+      noiseVarianceEstimates_(std::make_pair(stage1ParamsRegion1(4), stage1ParamsRegion2(4)))
+{
   using namespace arma;
   design_ = join_vert(join_horiz(ones(numTimePt_ * numVoxelRegion1_, 1),
                                  zeros(numTimePt_ * numVoxelRegion1_, 1)),
@@ -37,6 +37,10 @@ OptInter::OptInter(const arma::mat& dataRegion1, const arma::mat& dataRegion2,
 double OptInter::EvaluateWithGradient(
     const arma::mat &theta_unrestrict, arma::mat &gradient)
 {
+  if (abs(theta_unrestrict(0)) > 1e5) {
+    throw OptException("Possible poor initialization detected.");
+  }
+
   using arma::mat;
   using arma::vec;
   using arma::join_horiz;
@@ -49,18 +53,16 @@ double OptInter::EvaluateWithGradient(
   double kEta1 = softplus(theta_unrestrict(1));
   double kEta2 = softplus(theta_unrestrict(2));
   double tauEta = softplus(theta_unrestrict(3));
-  double nugget = softplus(theta_unrestrict(4));
-  std::cout << "params: " << rho << " " << kEta1 << " " << kEta2 << " " << tauEta << " " << nugget << std::endl;
+  double nuggetEta = softplus(theta_unrestrict(4));
+  std::cout << "params: " << rho << " " << kEta1 << " " << kEta2 << " " << tauEta << " " << nuggetEta << std::endl;
+  std::cout << "params unrestrict: " << theta_unrestrict(0) << ", " << theta_unrestrict(1) << ", " << theta_unrestrict(2) << ", " << theta_unrestrict(3) << ", " << theta_unrestrict(4) << std::endl;
 
   // log-likelihood components
   int M_L1 = numTimePt_*numVoxelRegion1_;
   int M_L2 = numTimePt_*numVoxelRegion2_;
 
-  // Construct the Sigma_alpha matrix.
-
   // A Matrix
-  mat dAt_dk_eta = rbf(timeSqrd_, tauEta);
-  mat At = dAt_dk_eta + nugget * arma::eye(numTimePt_, numTimePt_);
+  mat At = rbf(timeSqrd_, tauEta) + diagmat(vec(numTimePt_, arma::fill::value(nuggetEta)));
 
   mat M_12 = arma::repmat(
       rho*sqrt(kEta1)*sqrt(kEta2)*At, numVoxelRegion1_, numVoxelRegion2_);
@@ -88,25 +90,17 @@ double OptInter::EvaluateWithGradient(
   // l2 is logdet(UtVinvjj'U)
   double l2 = arma::log_det_sympd(UtVinvU);
 
-  double noiseVarRegion1 = stage1ParamsRegion1_(4);
-  double noiseVarRegion2 = stage1ParamsRegion2_(4);
-  vec scaleStd = arma::join_vert(arma::ones(M_L1) / sqrt(noiseVarRegion1),
-                                arma::ones(M_L2) / sqrt(noiseVarRegion2));
+  vec scaleStd = arma::join_vert(arma::ones(M_L1) / sqrt(noiseVarianceEstimates_.first),
+                                arma::ones(M_L2) / sqrt(noiseVarianceEstimates_.second));
   mat scaleStdDiag = arma::diagmat(scaleStd);
   mat Hscaled = H*scaleStdDiag * dataRegionCombined_ * dataRegionCombined_.t() * scaleStdDiag;
 
   double l3 = arma::trace(Hscaled);
 
-  double negLL = (l1 + l2 + l3)/2;
+  double negLL = l1 + l2 + l3;
 
 
-  // Get gradient for each component of the REML function.
-
-  // mat rhoDeriv_At = arma::repmat(At, numVoxelRegion1_, numVoxelRegion2_);
-  // mat J_L1 = arma::ones(numVoxelRegion1_, numVoxelRegion1_);
-  // mat J_L2 = arma::ones(numVoxelRegion2_, numVoxelRegion2_);
-  // mat J_L12 = arma::ones(numVoxelRegion1_, numVoxelRegion2_);
-
+  // Compute gradients
   mat At_11 = arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_);
   mat At_22 = arma::repmat(At, numVoxelRegion2_, numVoxelRegion2_);
   mat At_12 = arma::repmat(At, numVoxelRegion1_, numVoxelRegion2_);
@@ -130,18 +124,20 @@ double OptInter::EvaluateWithGradient(
   );
 
   mat dAt_dtau_eta = rbf_deriv(timeSqrd_, tauEta);
+  mat cross = arma::repmat(dAt_dtau_eta, numVoxelRegion1_, numVoxelRegion2_) * sqrt(kEta1 * kEta2) * rho;
   mat dVdtauEta = join_vert(
     join_horiz(arma::repmat(dAt_dtau_eta, numVoxelRegion1_, numVoxelRegion1_) * kEta1,
-              arma::repmat(dAt_dtau_eta, numVoxelRegion1_, numVoxelRegion2_) * sqrt(kEta1 * kEta2) * rho),
-    join_horiz(arma::repmat(dAt_dtau_eta, numVoxelRegion2_, numVoxelRegion1_) * sqrt(kEta1 * kEta2) * rho,
+              cross),
+    join_horiz(cross.t(),
               arma::repmat(dAt_dtau_eta, numVoxelRegion2_, numVoxelRegion2_) * kEta2)
   );
 
   mat dAt_dnugget = arma::eye(numTimePt_, numTimePt_);
+  cross = arma::repmat(dAt_dnugget, numVoxelRegion1_, numVoxelRegion2_) * sqrt(kEta1 * kEta2) * rho;
   mat dVdnugget = join_vert(
     join_horiz(arma::repmat(dAt_dnugget, numVoxelRegion1_, numVoxelRegion1_) * kEta1,
-              arma::repmat(dAt_dnugget, numVoxelRegion1_, numVoxelRegion2_) * sqrt(kEta1 * kEta2) * rho),
-    join_horiz(arma::repmat(dAt_dnugget, numVoxelRegion2_, numVoxelRegion1_) * sqrt(kEta1 * kEta2) * rho,
+              cross),
+    join_horiz(cross.t(),
               arma::repmat(dAt_dnugget, numVoxelRegion2_, numVoxelRegion2_) * kEta2)
   );
 
@@ -149,15 +145,14 @@ double OptInter::EvaluateWithGradient(
 
   Hscaled *= -1;
   Hscaled.diag() += 1;
-  gradient(0) =  rho_deriv * trace(H * dVdrho * Hscaled) / 2;
-  gradient(1) =  logistic(kEta1) * trace(H * dVdkEta1 * Hscaled) / 2;
-  gradient(2) =  logistic(kEta2) * trace(H * dVdkEta2 * Hscaled) / 2;
-  gradient(3) =  logistic(tauEta) * trace(H * dVdtauEta * Hscaled) / 2;
-  gradient(4) =  logistic(nugget) * trace(H * dVdnugget * Hscaled) / 2;
+  gradient(0) =  rho_deriv * trace(H * dVdrho * Hscaled);
+  gradient(1) =  logistic(kEta1) * trace(H * dVdkEta1 * Hscaled);
+  gradient(2) =  logistic(kEta2) * trace(H * dVdkEta2 * Hscaled);
+  gradient(3) =  logistic(tauEta) * trace(H * dVdtauEta * Hscaled);
+  gradient(4) =  logistic(nuggetEta) * trace(H * dVdnugget * Hscaled);
 
-  std::cout << "NegLL, Grad: " << negLL << ", " << gradient(0) << " "
-            << gradient(1) << " "
-            << gradient(2) << " " << gradient(3) << " " << gradient(4) << " "
+  std::cout << "NegLL, Grad: " << std::setprecision(5) << negLL << ", "
+    << gradient(0) << ", " << gradient(1) << ", " << gradient(2) << ", " << gradient(3) << ", " << gradient(4) << ", "
             << arma::norm(gradient) <<  std::endl;
 
   return negLL;
@@ -173,13 +168,18 @@ double OptInter::Evaluate(const arma::mat &theta)
   // theta parameter list:
   // rho, kEta1, kEta2, tauEta, nugget
   // Transform unrestricted parameters to original forms.
-  // double rho = theta_unrestrict(0);
   double rho = theta(0);
-  double kEta1 = 0.5;//softplus(theta_unrestrict(1));
-  double kEta2 = 0.5;// softplus(theta_unrestrict(2));
-  double tauEta = 0.25;// softplus(theta_unrestrict(3));
-  double nugget = 0;// softplus(theta_unrestrict(4));
-  // std::cout << "params: " << rho << " " << kEta1 << " " << kEta2 << " " << tauEta << " " << nugget << std::endl;
+  double kEta1 = theta(1);
+  double kEta2 = theta(2);
+  double tauEta = theta(3);
+  double nuggetEta = theta(4);
+  // double nuggetEta = softplus(theta_unrestrict(4));
+  std::cout << "params: " << rho << " " << kEta1 << " " << kEta2 << " " << tauEta << " " << nuggetEta << std::endl;
+  // std::cout << "params unrestrict: " << theta_unrestrict(0) << ", " << theta_unrestrict(1) << ", " << theta_unrestrict(2) << ", " << theta_unrestrict(3) << ", " << theta_unrestrict(4) << std::endl;
+
+  if (rho + 1 < 0.0001) {
+    throw Rcpp::exception("uh oh");
+  }
 
   // log-likelihood components
   int M_L1 = numTimePt_*numVoxelRegion1_;
@@ -188,18 +188,18 @@ double OptInter::Evaluate(const arma::mat &theta)
   // Construct the Sigma_alpha matrix.
 
   // A Matrix
-  mat dAt_dk_eta = rbf(timeSqrd_, tauEta);
-  mat At = dAt_dk_eta + nugget * arma::eye(numTimePt_, numTimePt_);
+
+  mat At = rbf(timeSqrd_, tauEta) + diagmat(vec(numTimePt_, arma::fill::value(nuggetEta)));
 
   mat M_12 = arma::repmat(
-    rho*sqrt(kEta1)*sqrt(kEta2)*At, numVoxelRegion1_, numVoxelRegion2_);
+      rho*sqrt(kEta1)*sqrt(kEta2)*At, numVoxelRegion1_, numVoxelRegion2_);
 
   mat M_11 = spaceTimeKernelRegion1_ +
-    kEta1 * arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_) +
-    arma::eye(numVoxelRegion1_ * numTimePt_, numVoxelRegion1_ * numTimePt_);
+      kEta1 * arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_) +
+      arma::eye(numVoxelRegion1_ * numTimePt_, numVoxelRegion1_ * numTimePt_);
   mat M_22 = spaceTimeKernelRegion2_ +
-    kEta2 * arma::repmat(At, numVoxelRegion2_, numVoxelRegion2_) +
-    arma::eye(numVoxelRegion2_ * numTimePt_, numVoxelRegion2_ * numTimePt_);
+      kEta2 * arma::repmat(At, numVoxelRegion2_, numVoxelRegion2_) +
+      arma::eye(numVoxelRegion2_ * numTimePt_, numVoxelRegion2_ * numTimePt_);
 
   mat V = join_vert(
     join_horiz(M_11, M_12),
@@ -209,7 +209,7 @@ double OptInter::Evaluate(const arma::mat &theta)
   mat Vinv = arma::inv_sympd(V);
   mat VinvU = Vinv * design_;
   mat UtVinvU = design_.t() * VinvU;
-  mat H = Vinv - VinvU * arma::inv_sympd(UtVinvU) * design_.t() * Vinv;
+  mat H = Vinv - VinvU * arma::inv_sympd(UtVinvU) * VinvU.t();
 
   // l1 is logdet(Vjj')
   // l1 = arma::sum(arma::log(M_22_chol.diag())) + arma::sum(arma::log(C_11_chol.diag()));
@@ -217,16 +217,18 @@ double OptInter::Evaluate(const arma::mat &theta)
   // l2 is logdet(UtVinvjj'U)
   double l2 = arma::log_det_sympd(UtVinvU);
 
-  double noiseVarRegion1 = stage1ParamsRegion1_(4);
-  double noiseVarRegion2 = stage1ParamsRegion2_(4);
-  vec scaleStd = arma::join_vert(arma::ones(M_L1) / sqrt(noiseVarRegion1),
-                                arma::ones(M_L2) / sqrt(noiseVarRegion2));
+  vec scaleStd = arma::join_vert(arma::ones(M_L1) / sqrt(noiseVarianceEstimates_.first),
+                                arma::ones(M_L2) / sqrt(noiseVarianceEstimates_.second));
   mat scaleStdDiag = arma::diagmat(scaleStd);
   mat Hscaled = H*scaleStdDiag * dataRegionCombined_ * dataRegionCombined_.t() * scaleStdDiag;
 
   double l3 = arma::trace(Hscaled);
 
-  double negLL = (l1 + l2 + l3)/2;
-
+  double negLL = l1 + l2 + l3;
   return negLL;
+}
+
+std::pair<double, double> OptInter::GetNoiseVarianceEstimates()
+{
+  return noiseVarianceEstimates_;
 }
