@@ -1,7 +1,4 @@
 #include "OptIntra.h"
-
-#include <math.h>
-
 #include "helper.h"
 #include "rbf.h"
 
@@ -10,15 +7,16 @@
 *****************************************************************************/
 
 OptIntra::OptIntra(const arma::mat &data, const arma::mat &distSqrd,
-                   const arma::mat &timeSqrd, int numVoxel, int numTimePt,
-                   KernelType kernelType)
+                   const arma::mat &timeSqrd, KernelType kernelType)
     : data_(data),
       distSqrd_(distSqrd),
       timeSqrd_(timeSqrd),
-      numVoxel_(numVoxel),
-      numTimePt_(numTimePt),
       kernelType_(kernelType),
-      noiseVarianceEstimate_(-1) {}
+      noiseVarianceEstimate_(-1)
+{
+    numVoxel_ = distSqrd.n_rows;
+    numTimePt_ = timeSqrd.n_rows;
+}
 
 double OptIntra::EvaluateWithGradient(const arma::mat &theta,
                                       arma::mat &gradient) {
@@ -35,7 +33,6 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
   mat timeIdentity = arma::eye(numTimePt_, numTimePt_);
   mat timeSpaceIdentity =
       arma::eye(numTimePt_ * numVoxel_, numTimePt_ * numVoxel_);
-//   mat dataReshape = arma::reshape(data_, numTimePt_, numVoxel_);
   mat U = arma::repmat(timeIdentity, numVoxel_, 1);
 
   mat timeRbf = rbf(timeSqrd_, scaleTemporal);
@@ -77,11 +74,6 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
   const mat &dTemporalDvar = timeRbf;
   mat dTemporalDscale = varTemporal * rbf_deriv(timeSqrd_, scaleTemporal);
   mat dSpatialDscale = get_cor_mat_deriv(kernelType_, distSqrd_, scaleSpatial);
-
-  // mat dVdVarTemporal = arma::kron(covarSpatial, dTemporalDvar);
-  // mat dVdVarTemporalNugget = arma::kron(covarSpatial, timeIdentity);
-  // mat dVdScaleTemporal = arma::kron(covarSpatial, dTemporalDscale);
-  // mat dVdScaleSpatial = arma::kron(dSpatialDscale, covarTemporal);
 
   // The calls to diagvec are delayed
   // so this does not compute the entire matrix product to just get the

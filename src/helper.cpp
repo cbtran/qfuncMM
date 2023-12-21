@@ -1,5 +1,4 @@
 #include "helper.h"
-#include "matern.h"
 #include "rbf.h"
 #include <math.h>
 
@@ -65,7 +64,7 @@ arma::mat softplus(arma::mat xMat) {
 }
 
 double logistic(double x) {
-  return 1. / (1. + exp(-x));
+  return exp(-log1pexp(-x));
 }
 
 double sigmoid_inv(double y,

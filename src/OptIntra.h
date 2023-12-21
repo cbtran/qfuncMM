@@ -15,8 +15,7 @@ class OptIntra {
 
  public:
   OptIntra(const arma::mat& data, const arma::mat& distSqrd,
-           const arma::mat& timeSqrd, int numVoxel, int numTimePt,
-           KernelType kernelType);
+           const arma::mat& timeSqrd, KernelType kernelType);
 
   // Compute objective function update gradient
   double EvaluateWithGradient(const arma::mat& theta, arma::mat& gradient);

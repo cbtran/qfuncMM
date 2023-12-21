@@ -26,52 +26,35 @@ NULL
 
 #' @title Fit intra-regional model using L-BFGS
 #' @param theta_init unrestricted initialization of parameters for 1 region
-#' @param X_region Data matrix of signals of 1 region
-#' @param Z_region fixed-effects design matrix of 1 region
-#' @param voxel_coords Voxel coordinates for the region
-#' @param time_sqrd_mat Temporal squared distance matrix
-#' @param num_voxel Number of voxels
-#' @param num_timept Number of time points
+#' @param X_region Vectorized (LM) - data matrix of signals of 1 region
+#' @param voxel_coords L x 3 matrix of voxel coordinates
+#' @param time_sqrd_mat M x M temporal squared distance matrix
 #' @param kernel_type_id Choice of spatial kernel
 #' @return List of 2 components:
-#' \item{theta}{estimated intra-regional parameters}
-#' \item{nu}{fixed-effect estimate}
+#'   theta: Estimated intra-regional parameters
+#'   var_noise: Estimated noise variance
 #' @noRd
-opt_intra <- function(theta_init, X_region, Z_region, voxel_coords, time_sqrd_mat, num_voxel, num_timept, kernel_type_id) {
-    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, Z_region, voxel_coords, time_sqrd_mat, num_voxel, num_timept, kernel_type_id)
-}
-
-#' @export
-opt_intra_new <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, num_voxel, num_timept, kernel_type_id) {
-    .Call('_qfuncMM_opt_intra_new', PACKAGE = 'qfuncMM', theta_init, X_region, voxel_coords, time_sqrd_mat, num_voxel, num_timept, kernel_type_id)
+opt_intra <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id) {
+    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id)
 }
 
 #' @title Fit inter-regional model using L-BFGS
 #' @param theta_init unrestricted initialization of parameters for
 #'  inter-regional model
-#' @param X Data matrix of signals of 2 regions
-#' @param Z fixed-effects design matrix of 2 regions
+#' @param dataRegion1 Vectorized region 1 data matrix
+#' @param dataRegion2 Vectorized region 2 data matrix
 #' @param voxel_coords_1 Region 1 voxel coordinates
 #' @param voxel_coords_2 Region 2 voxel coordinates
+#' @param time_sqrd_mat M x M temporal squared distance matrix
+#' @param stage1ParamsRegion1 Regional parameters from stage 1
+#' @param stage1ParamsRegion2 Regional parameters from stage 1
 #' @param kernel_type_id Choice of spatial kernel
-#' @param stage1_regional Regional parameters from stage 1
 #' @return List of 3 components:
-#'\item{theta}{estimated inter-regional parameters}
-#'\item{asymptotic_var}{asymptotic variance of transformed correlation
-#'     coefficient}
-#' \item{rho_transformed}{Fisher transformation of correlation coefficient}
+#'   theta: Estimated inter-regional parameters
+#'   var_noise: Estimated noise variance
+#'   objective: optimal loss (negiatve log-likelihood) found.
 #' @noRd
-opt_inter <- function(theta_init, X, Z, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1_regional, kernel_type_id) {
-    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, X, Z, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1_regional, kernel_type_id)
-}
-
-#' @export
-opt_inter_new <- function(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id) {
-    .Call('_qfuncMM_opt_inter_new', PACKAGE = 'qfuncMM', theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id)
-}
-
-#' @export
-opt_inter_vals <- function(x, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id) {
-    .Call('_qfuncMM_opt_inter_vals', PACKAGE = 'qfuncMM', x, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id)
+opt_inter <- function(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id) {
+    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id)
 }
 

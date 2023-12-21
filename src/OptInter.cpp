@@ -1,9 +1,7 @@
 #include "OptInter.h"
 #include <math.h>
-#include "Rcpp/exceptions.h"
 #include "rbf.h"
 #include "helper.h"
-#include "OptException.h"
 
 /*****************************************************************************
  Inter-regional model
@@ -37,10 +35,6 @@ OptInter::OptInter(const arma::mat& dataRegion1, const arma::mat& dataRegion2,
 double OptInter::EvaluateWithGradient(
     const arma::mat &theta_unrestrict, arma::mat &gradient)
 {
-  if (abs(theta_unrestrict(0)) > 1e5) {
-    throw OptException("Possible poor initialization detected.");
-  }
-
   using arma::mat;
   using arma::vec;
   using arma::join_horiz;
@@ -54,15 +48,14 @@ double OptInter::EvaluateWithGradient(
   double kEta2 = softplus(theta_unrestrict(2));
   double tauEta = softplus(theta_unrestrict(3));
   double nuggetEta = softplus(theta_unrestrict(4));
-  std::cout << "params: " << rho << " " << kEta1 << " " << kEta2 << " " << tauEta << " " << nuggetEta << std::endl;
-  std::cout << "params unrestrict: " << theta_unrestrict(0) << ", " << theta_unrestrict(1) << ", " << theta_unrestrict(2) << ", " << theta_unrestrict(3) << ", " << theta_unrestrict(4) << std::endl;
+  // Rcpp::Rcout << "Params: " << rho << " " << kEta1 << " " << kEta2 << " " << tauEta << " " << nuggetEta << std::endl;
 
-  // log-likelihood components
   int M_L1 = numTimePt_*numVoxelRegion1_;
   int M_L2 = numTimePt_*numVoxelRegion2_;
 
   // A Matrix
-  mat At = rbf(timeSqrd_, tauEta) + diagmat(vec(numTimePt_, arma::fill::value(nuggetEta)));
+  mat At = rbf(timeSqrd_, tauEta);
+  At.diag() += nuggetEta;
 
   mat M_12 = arma::repmat(
       rho*sqrt(kEta1)*sqrt(kEta2)*At, numVoxelRegion1_, numVoxelRegion2_);
@@ -85,7 +78,6 @@ double OptInter::EvaluateWithGradient(
   mat H = Vinv - VinvU * arma::inv_sympd(UtVinvU) * VinvU.t();
 
   // l1 is logdet(Vjj')
-  // l1 = arma::sum(arma::log(M_22_chol.diag())) + arma::sum(arma::log(C_11_chol.diag()));
   double l1 = arma::log_det_sympd(V);
   // l2 is logdet(UtVinvjj'U)
   double l2 = arma::log_det_sympd(UtVinvU);
@@ -95,10 +87,14 @@ double OptInter::EvaluateWithGradient(
   mat scaleStdDiag = arma::diagmat(scaleStd);
   mat Hscaled = H*scaleStdDiag * dataRegionCombined_ * dataRegionCombined_.t() * scaleStdDiag;
 
+  // TODO: This is possibly faster. Investigate
+  // mat Hscaled = dataRegionCombined_ * dataRegionCombined_.t();
+  // Hscaled.each_col() %= scaleStd;
+  // Hscaled.each_row() %= scaleStd.t();
+  // Hscaled = H * Hscaled;
+
   double l3 = arma::trace(Hscaled);
-
   double negLL = l1 + l2 + l3;
-
 
   // Compute gradients
   mat At_11 = arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_);
@@ -107,20 +103,25 @@ double OptInter::EvaluateWithGradient(
 
   mat dkEta2_12 = At_12 * sqrt(kEta2) * rho / (2 * sqrt(kEta1));
 
+  mat commondiag1 = At_12 * sqrt(kEta2) * rho / (2 * sqrt(kEta1));
+  mat commondiag2 = At_12 * sqrt(kEta1) * rho / (2 * sqrt(kEta2));
+  mat zeroML1 = arma::zeros(M_L1, M_L1);
+  mat zeroML2 = arma::zeros(M_L2, M_L2);
+
   mat dVdkEta1 = join_vert(
-    join_horiz(At_11, At_12 * sqrt(kEta2) * rho / (2 * sqrt(kEta1))),
-    join_horiz(At_12.t() * sqrt(kEta1) * rho / (2 * sqrt(kEta2)),
-      arma::zeros(M_L2, M_L2))
+    join_horiz(At_11, commondiag1),
+    join_horiz(commondiag2.t(), zeroML2)
   );
 
   mat dVdkEta2 = join_vert(
-    join_horiz(arma::zeros(M_L1, M_L1), At_12 * sqrt(kEta1) * rho / (2 * sqrt(kEta2))),
-    join_horiz(At_12.t() * sqrt(kEta2) * rho / (2 * sqrt(kEta1)), At_22)
+    join_horiz(zeroML1, commondiag2),
+    join_horiz(commondiag1.t(), At_22)
   );
 
+  mat commonRhoDiag = At_12 * sqrt(kEta1 * kEta2);
   mat dVdrho = join_vert(
-    join_horiz(arma::zeros(M_L1, M_L1), At_12 * sqrt(kEta1 * kEta2)),
-    join_horiz(At_12.t() * sqrt(kEta1 * kEta2), arma::zeros(M_L2, M_L2))
+    join_horiz(zeroML1, commonRhoDiag),
+    join_horiz(commonRhoDiag.t(), zeroML2)
   );
 
   mat dAt_dtau_eta = rbf_deriv(timeSqrd_, tauEta);
@@ -151,14 +152,12 @@ double OptInter::EvaluateWithGradient(
   gradient(3) =  logistic(tauEta) * trace(H * dVdtauEta * Hscaled);
   gradient(4) =  logistic(nuggetEta) * trace(H * dVdnugget * Hscaled);
 
-  std::cout << "NegLL, Grad: " << std::setprecision(5) << negLL << ", "
-    << gradient(0) << ", " << gradient(1) << ", " << gradient(2) << ", " << gradient(3) << ", " << gradient(4) << ", "
-            << arma::norm(gradient) <<  std::endl;
+  // Rcpp::Rcout << "NegLL: " << std::setprecision(10) << negLL << std::endl;
 
   return negLL;
 }
 
-double OptInter::Evaluate(const arma::mat &theta)
+double OptInter::Evaluate(const arma::mat &theta_unrestrict)
 {
   using arma::mat;
   using arma::vec;
@@ -168,27 +167,17 @@ double OptInter::Evaluate(const arma::mat &theta)
   // theta parameter list:
   // rho, kEta1, kEta2, tauEta, nugget
   // Transform unrestricted parameters to original forms.
-  double rho = theta(0);
-  double kEta1 = theta(1);
-  double kEta2 = theta(2);
-  double tauEta = theta(3);
-  double nuggetEta = theta(4);
-  // double nuggetEta = softplus(theta_unrestrict(4));
-  std::cout << "params: " << rho << " " << kEta1 << " " << kEta2 << " " << tauEta << " " << nuggetEta << std::endl;
-  // std::cout << "params unrestrict: " << theta_unrestrict(0) << ", " << theta_unrestrict(1) << ", " << theta_unrestrict(2) << ", " << theta_unrestrict(3) << ", " << theta_unrestrict(4) << std::endl;
-
-  if (rho + 1 < 0.0001) {
-    throw Rcpp::exception("uh oh");
-  }
+  double rho = sigmoid_inv(theta_unrestrict(0), -1, 1);
+  double kEta1 = softplus(theta_unrestrict(1));
+  double kEta2 = softplus(theta_unrestrict(2));
+  double tauEta = softplus(theta_unrestrict(3));
+  double nuggetEta = softplus(theta_unrestrict(4));
 
   // log-likelihood components
   int M_L1 = numTimePt_*numVoxelRegion1_;
   int M_L2 = numTimePt_*numVoxelRegion2_;
 
-  // Construct the Sigma_alpha matrix.
-
   // A Matrix
-
   mat At = rbf(timeSqrd_, tauEta) + diagmat(vec(numTimePt_, arma::fill::value(nuggetEta)));
 
   mat M_12 = arma::repmat(
@@ -225,8 +214,10 @@ double OptInter::Evaluate(const arma::mat &theta)
   double l3 = arma::trace(Hscaled);
 
   double negLL = l1 + l2 + l3;
+
   return negLL;
 }
+
 
 std::pair<double, double> OptInter::GetNoiseVarianceEstimates()
 {

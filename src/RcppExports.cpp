@@ -13,26 +13,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // opt_intra
-Rcpp::List opt_intra(const arma::vec& theta_init, const arma::mat& X_region, const arma::mat& Z_region, const arma::mat& voxel_coords, const arma::mat& time_sqrd_mat, int num_voxel, int num_timept, int kernel_type_id);
-RcppExport SEXP _qfuncMM_opt_intra(SEXP theta_initSEXP, SEXP X_regionSEXP, SEXP Z_regionSEXP, SEXP voxel_coordsSEXP, SEXP time_sqrd_matSEXP, SEXP num_voxelSEXP, SEXP num_timeptSEXP, SEXP kernel_type_idSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::vec& >::type theta_init(theta_initSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type X_region(X_regionSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type Z_region(Z_regionSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type voxel_coords(voxel_coordsSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type time_sqrd_mat(time_sqrd_matSEXP);
-    Rcpp::traits::input_parameter< int >::type num_voxel(num_voxelSEXP);
-    Rcpp::traits::input_parameter< int >::type num_timept(num_timeptSEXP);
-    Rcpp::traits::input_parameter< int >::type kernel_type_id(kernel_type_idSEXP);
-    rcpp_result_gen = Rcpp::wrap(opt_intra(theta_init, X_region, Z_region, voxel_coords, time_sqrd_mat, num_voxel, num_timept, kernel_type_id));
-    return rcpp_result_gen;
-END_RCPP
-}
-// opt_intra_new
-Rcpp::List opt_intra_new(const arma::vec& theta_init, const arma::mat& X_region, const arma::mat& voxel_coords, const arma::mat& time_sqrd_mat, int num_voxel, int num_timept, int kernel_type_id);
-RcppExport SEXP _qfuncMM_opt_intra_new(SEXP theta_initSEXP, SEXP X_regionSEXP, SEXP voxel_coordsSEXP, SEXP time_sqrd_matSEXP, SEXP num_voxelSEXP, SEXP num_timeptSEXP, SEXP kernel_type_idSEXP) {
+Rcpp::List opt_intra(const arma::vec& theta_init, const arma::mat& X_region, const arma::mat& voxel_coords, const arma::mat& time_sqrd_mat, int kernel_type_id);
+RcppExport SEXP _qfuncMM_opt_intra(SEXP theta_initSEXP, SEXP X_regionSEXP, SEXP voxel_coordsSEXP, SEXP time_sqrd_matSEXP, SEXP kernel_type_idSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -40,34 +22,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::mat& >::type X_region(X_regionSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type voxel_coords(voxel_coordsSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type time_sqrd_mat(time_sqrd_matSEXP);
-    Rcpp::traits::input_parameter< int >::type num_voxel(num_voxelSEXP);
-    Rcpp::traits::input_parameter< int >::type num_timept(num_timeptSEXP);
     Rcpp::traits::input_parameter< int >::type kernel_type_id(kernel_type_idSEXP);
-    rcpp_result_gen = Rcpp::wrap(opt_intra_new(theta_init, X_region, voxel_coords, time_sqrd_mat, num_voxel, num_timept, kernel_type_id));
+    rcpp_result_gen = Rcpp::wrap(opt_intra(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id));
     return rcpp_result_gen;
 END_RCPP
 }
 // opt_inter
-Rcpp::List opt_inter(const arma::vec& theta_init, const arma::mat& X, const arma::mat& Z, const arma::mat& voxel_coords_1, const arma::mat& voxel_coords_2, const arma::mat& time_sqrd_mat, const arma::vec& stage1_regional, int kernel_type_id);
-RcppExport SEXP _qfuncMM_opt_inter(SEXP theta_initSEXP, SEXP XSEXP, SEXP ZSEXP, SEXP voxel_coords_1SEXP, SEXP voxel_coords_2SEXP, SEXP time_sqrd_matSEXP, SEXP stage1_regionalSEXP, SEXP kernel_type_idSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::vec& >::type theta_init(theta_initSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type X(XSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type Z(ZSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type voxel_coords_1(voxel_coords_1SEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type voxel_coords_2(voxel_coords_2SEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type time_sqrd_mat(time_sqrd_matSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type stage1_regional(stage1_regionalSEXP);
-    Rcpp::traits::input_parameter< int >::type kernel_type_id(kernel_type_idSEXP);
-    rcpp_result_gen = Rcpp::wrap(opt_inter(theta_init, X, Z, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1_regional, kernel_type_id));
-    return rcpp_result_gen;
-END_RCPP
-}
-// opt_inter_new
-Rcpp::List opt_inter_new(const arma::vec& theta_init, const arma::mat& dataRegion1, const arma::mat& dataRegion2, const arma::mat& voxel_coords_1, const arma::mat& voxel_coords_2, const arma::mat& time_sqrd_mat, const arma::vec& stage1ParamsRegion1, const arma::vec& stage1ParamsRegion2, int kernel_type_id);
-RcppExport SEXP _qfuncMM_opt_inter_new(SEXP theta_initSEXP, SEXP dataRegion1SEXP, SEXP dataRegion2SEXP, SEXP voxel_coords_1SEXP, SEXP voxel_coords_2SEXP, SEXP time_sqrd_matSEXP, SEXP stage1ParamsRegion1SEXP, SEXP stage1ParamsRegion2SEXP, SEXP kernel_type_idSEXP) {
+Rcpp::List opt_inter(const arma::vec& theta_init, const arma::mat& dataRegion1, const arma::mat& dataRegion2, const arma::mat& voxel_coords_1, const arma::mat& voxel_coords_2, const arma::mat& time_sqrd_mat, const arma::vec& stage1ParamsRegion1, const arma::vec& stage1ParamsRegion2, int kernel_type_id);
+RcppExport SEXP _qfuncMM_opt_inter(SEXP theta_initSEXP, SEXP dataRegion1SEXP, SEXP dataRegion2SEXP, SEXP voxel_coords_1SEXP, SEXP voxel_coords_2SEXP, SEXP time_sqrd_matSEXP, SEXP stage1ParamsRegion1SEXP, SEXP stage1ParamsRegion2SEXP, SEXP kernel_type_idSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -80,36 +42,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type stage1ParamsRegion1(stage1ParamsRegion1SEXP);
     Rcpp::traits::input_parameter< const arma::vec& >::type stage1ParamsRegion2(stage1ParamsRegion2SEXP);
     Rcpp::traits::input_parameter< int >::type kernel_type_id(kernel_type_idSEXP);
-    rcpp_result_gen = Rcpp::wrap(opt_inter_new(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id));
-    return rcpp_result_gen;
-END_RCPP
-}
-// opt_inter_vals
-Rcpp::List opt_inter_vals(const arma::vec x, const arma::mat& dataRegion1, const arma::mat& dataRegion2, const arma::mat& voxel_coords_1, const arma::mat& voxel_coords_2, const arma::mat& time_sqrd_mat, const arma::vec& stage1ParamsRegion1, const arma::vec& stage1ParamsRegion2, int kernel_type_id);
-RcppExport SEXP _qfuncMM_opt_inter_vals(SEXP xSEXP, SEXP dataRegion1SEXP, SEXP dataRegion2SEXP, SEXP voxel_coords_1SEXP, SEXP voxel_coords_2SEXP, SEXP time_sqrd_matSEXP, SEXP stage1ParamsRegion1SEXP, SEXP stage1ParamsRegion2SEXP, SEXP kernel_type_idSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::vec >::type x(xSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type dataRegion1(dataRegion1SEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type dataRegion2(dataRegion2SEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type voxel_coords_1(voxel_coords_1SEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type voxel_coords_2(voxel_coords_2SEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type time_sqrd_mat(time_sqrd_matSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type stage1ParamsRegion1(stage1ParamsRegion1SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type stage1ParamsRegion2(stage1ParamsRegion2SEXP);
-    Rcpp::traits::input_parameter< int >::type kernel_type_id(kernel_type_idSEXP);
-    rcpp_result_gen = Rcpp::wrap(opt_inter_vals(x, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id));
+    rcpp_result_gen = Rcpp::wrap(opt_inter(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_qfuncMM_opt_intra", (DL_FUNC) &_qfuncMM_opt_intra, 8},
-    {"_qfuncMM_opt_intra_new", (DL_FUNC) &_qfuncMM_opt_intra_new, 7},
-    {"_qfuncMM_opt_inter", (DL_FUNC) &_qfuncMM_opt_inter, 8},
-    {"_qfuncMM_opt_inter_new", (DL_FUNC) &_qfuncMM_opt_inter_new, 9},
-    {"_qfuncMM_opt_inter_vals", (DL_FUNC) &_qfuncMM_opt_inter_vals, 9},
+    {"_qfuncMM_opt_intra", (DL_FUNC) &_qfuncMM_opt_intra, 5},
+    {"_qfuncMM_opt_inter", (DL_FUNC) &_qfuncMM_opt_inter, 9},
     {NULL, NULL, 0}
 };
 

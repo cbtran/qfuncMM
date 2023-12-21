@@ -1,6 +1,5 @@
 #ifndef MATERN_H
 #define MATERN_H
-#include <math.h>
 #include <RcppArmadillo.h>
 // [[Rcpp::depends(RcppArmadillo)]]
 

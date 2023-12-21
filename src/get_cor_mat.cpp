@@ -1,4 +1,3 @@
-#include <math.h>
 #include "get_cor_mat.h"
 #include "rbf.h"
 #include "matern.h"
