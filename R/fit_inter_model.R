@@ -29,8 +29,8 @@ fit_inter_model <- function(
   init <- c(ca, softminus(1), softminus(1), 0, softminus(0.1))
 
   result <- opt_inter(theta_init = init,
-                      dataRegion1 = matrix(region1_mx, ncol = 1),
-                      dataRegion2 = matrix(region2_mx, ncol = 1),
+                      dataRegion1 = region1_mx,
+                      dataRegion2 = region2_mx,
                       voxel_coords_1 = voxel_coords_1,
                       voxel_coords_2 = voxel_coords_2,
                       time_sqrd_mat = time_sqrd_mat,
@@ -39,7 +39,8 @@ fit_inter_model <- function(
                       kernel_type_id = kernel_type_id)
 
   result <- as.list(c(result$theta, result$var_noise))
-  names(result) <- c("rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta")
+  names(result) <- c("rho", "k_eta1", "k_eta2", "tau_eta",
+                     "nugget_eta", "var_noise1", "var_noise2")
   return(result)
 }
 

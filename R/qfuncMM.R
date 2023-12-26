@@ -50,9 +50,11 @@ qfuncMM <- function(region_list, voxel_coords,
 
   time_sqrd_mat <- outer(seq_len(n_timept), seq_len(n_timept), `-`)^2
 
-  stage1_regional <- matrix(nrow = n_region, ncol = 5)
-  colnames(stage1_regional) <-
-    c("phi_gamma", "tau_gamma", "k_gamma", "nugget_gamma", "var_noise")
+  stage1_regional <- matrix(nrow = n_region, ncol = 5,
+                            dimnames = list(paste0("r", seq_len(n_region)),
+                                            c("phi_gamma", "tau_gamma",
+                                              "k_gamma", "nugget_gamma",
+                                              "var_noise")))
 
   if (verbose) {
     cat("Stage 1: estimating intra-regional parameters...\n")
@@ -76,8 +78,15 @@ qfuncMM <- function(region_list, voxel_coords,
     cat("Stage 2: estimating inter-regional correlations...\n")
   }
 
-  cor_mx <- matrix(1, nrow = n_region, ncol = n_region)
-  stage2_inter <- array(dim = c(n_region, n_region, 4))
+  cor_mx <- matrix(1, nrow = n_region, ncol = n_region,
+                   dimnames = list(paste0("r", seq_len(n_region)),
+                                   paste0("r", seq_len(n_region))))
+  stage2_inter <- array(dim = c(n_region, n_region, 6),
+                        dimnames = list(paste0("r", seq_len(n_region)),
+                                        paste0("r", seq_len(n_region)),
+                                        c("k_eta1", "k_eta2",
+                                          "tau_eta", "nugget_eta",
+                                          "var_noise1", "var_noise2")))
 
   # Run stage 2 for each pair of regions
   for (reg1 in seq_len(n_region)) {
@@ -92,8 +101,9 @@ qfuncMM <- function(region_list, voxel_coords,
                                        kernel_type_id)
       cor_mx[reg1, reg2] <- stage2_result$rho
       cor_mx[reg2, reg1] <- stage2_result$rho
-      stage2_inter[reg1, reg2] <- stage2_result[-1]
-      stage2_inter[reg2, reg1] <- stage2_result[-1]
+      stage2_inter[reg1, reg2, ] <- as.numeric(stage2_result[-1])
+      stage2_inter[reg2, reg1, ] <- stage2_inter[reg1, reg2, ]
+      cat("Finished region pair", reg1, "-", reg2, "\n")
     }
   }
 
