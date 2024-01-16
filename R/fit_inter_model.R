@@ -5,10 +5,12 @@
 #' @param region2_mx Data matrix of signals of region 2
 #' @param voxel_coords_2 coordinates of voxels in region 2
 #' @param time_sqrd_mat Temporal squared distance matrix
-#' @param stage1_regional Estimated parameters of intra-regional models from 2 regions
+#' @param region1_stage1, Estimated stage1 parameters for region 1
+#' @param region2_stage1, Estimated stage1 parameters for region 2
 #' @param kernel_type_id Choice of spatial kernel
 #' @return Estimated stage 2 parameters
 #' @noRd
+#' @export
 
 fit_inter_model <- function(
     region1_mx,
