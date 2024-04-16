@@ -72,28 +72,27 @@ double OptInter::EvaluateWithGradient(
     join_horiz(M_12.t(), M_22)
   );
 
-  mat Vinv = arma::inv_sympd(V);
-  mat VinvU = Vinv * design_;
+  mat VR = arma::chol(V);
+  mat VRinv = arma::inv(arma::trimatu(VR));
+
+  mat Vinv = VRinv * VRinv.t();
+  mat VinvU = arma::solve(arma::trimatu(VR), VRinv.t() * design_);
   mat UtVinvU = design_.t() * VinvU;
-  mat H = Vinv - VinvU * arma::inv_sympd(UtVinvU) * VinvU.t();
+  mat UtVinvU_R = arma::chol(UtVinvU);
+  mat Rinv = arma::inv(arma::trimatu(UtVinvU_R));
+  mat H = Vinv - VinvU * Rinv * Rinv.t() * VinvU.t();
 
   // l1 is logdet(Vjj')
-  double l1 = arma::log_det_sympd(V);
+  double l1 = 2 * std::real(arma::log_det(arma::trimatu(VR)));
   // l2 is logdet(UtVinvjj'U)
-  double l2 = arma::log_det_sympd(UtVinvU);
+  double l2 = 2 * std::real(arma::log_det(arma::trimatu(UtVinvU_R)));
 
   vec scaleStd = arma::join_vert(arma::ones(M_L1) / sqrt(noiseVarianceEstimates_.first),
                                 arma::ones(M_L2) / sqrt(noiseVarianceEstimates_.second));
   mat scaleStdDiag = arma::diagmat(scaleStd);
-  mat Hscaled = H*scaleStdDiag * dataRegionCombined_ * dataRegionCombined_.t() * scaleStdDiag;
+  mat HGamma = H * scaleStdDiag * dataRegionCombined_ * dataRegionCombined_.t() * scaleStdDiag;
 
-  // TODO: This is possibly faster. Investigate
-  // mat Hscaled = dataRegionCombined_ * dataRegionCombined_.t();
-  // Hscaled.each_col() %= scaleStd;
-  // Hscaled.each_row() %= scaleStd.t();
-  // Hscaled = H * Hscaled;
-
-  double l3 = arma::trace(Hscaled);
+  double l3 = arma::trace(HGamma);
   double negLL = l1 + l2 + l3;
 
   // Compute gradients
@@ -144,13 +143,14 @@ double OptInter::EvaluateWithGradient(
 
   double rho_deriv = sigmoid_inv_derivative(rho, -1, 1);
 
-  Hscaled *= -1;
-  Hscaled.diag() += 1;
-  gradient(0) =  rho_deriv * trace(H * dVdrho * Hscaled);
-  gradient(1) =  logistic(kEta1) * trace(H * dVdkEta1 * Hscaled);
-  gradient(2) =  logistic(kEta2) * trace(H * dVdkEta2 * Hscaled);
-  gradient(3) =  logistic(tauEta) * trace(H * dVdtauEta * Hscaled);
-  gradient(4) =  logistic(nuggetEta) * trace(H * dVdnugget * Hscaled);
+  HGamma *= -1;
+  HGamma.diag() += 1;
+  mat HGammaH = HGamma * H;
+  gradient(0) =  rho_deriv * trace(dVdrho * HGammaH);
+  gradient(1) =  logistic(kEta1) * trace(dVdkEta1 * HGammaH);
+  gradient(2) =  logistic(kEta2) * trace(dVdkEta2 * HGammaH);
+  gradient(3) =  logistic(tauEta) * trace(dVdtauEta * HGammaH);
+  gradient(4) =  logistic(nuggetEta) * trace(dVdnugget * HGammaH);
 
   // Rcpp::Rcout << "NegLL: " << std::setprecision(10) << negLL << std::endl;
 
