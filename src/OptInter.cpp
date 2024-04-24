@@ -13,10 +13,7 @@ OptInter::OptInter(const arma::mat& dataRegion1, const arma::mat& dataRegion2,
                    const arma::mat& spaceTimeKernelRegion1,
                    const arma::mat& spaceTimeKernelRegion2,
                    const arma::mat& timeSqrd)
-    : dataRegion1_(arma::vectorise(dataRegion1)),
-      dataRegion2_(arma::vectorise(dataRegion2)),
-      dataRegionCombined_(arma::join_vert(dataRegion1_, dataRegion2_)),
-      numVoxelRegion1_(dataRegion1.n_cols),
+    : numVoxelRegion1_(dataRegion1.n_cols),
       numVoxelRegion2_(dataRegion2.n_cols),
       numTimePt_(dataRegion1.n_rows),
       spaceTimeKernelRegion1_(spaceTimeKernelRegion1),
@@ -29,6 +26,8 @@ OptInter::OptInter(const arma::mat& dataRegion1, const arma::mat& dataRegion2,
                                  zeros(numTimePt_ * numVoxelRegion1_, 1)),
                       join_horiz(zeros(numTimePt_ * numVoxelRegion2_, 1),
                                  ones(numTimePt_ * numVoxelRegion2_, 1)));
+  dataRegionCombined_ = join_vert(vectorise(dataRegion1) / sqrt(noiseVarianceEstimates_.first),
+                                  vectorise(dataRegion2) / sqrt(noiseVarianceEstimates_.second));
 }
 
   // Compute both objective function and its gradient
@@ -76,23 +75,22 @@ double OptInter::EvaluateWithGradient(
   mat VRinv = arma::inv(arma::trimatu(VR));
 
   mat Vinv = VRinv * VRinv.t();
-  mat VinvU = arma::solve(arma::trimatu(VR), VRinv.t() * design_);
+  mat VinvU = Vinv * design_;
   mat UtVinvU = design_.t() * VinvU;
   mat UtVinvU_R = arma::chol(UtVinvU);
   mat Rinv = arma::inv(arma::trimatu(UtVinvU_R));
-  mat H = Vinv - VinvU * Rinv * Rinv.t() * VinvU.t();
+  mat H = VinvU * Rinv;
+  H *= H.t();
+  H = Vinv - H;
 
   // l1 is logdet(Vjj')
-  double l1 = 2 * std::real(arma::log_det(arma::trimatu(VR)));
+  double l1 = 2 * arma::sum(arma::log(arma::diagvec(VR)));
   // l2 is logdet(UtVinvjj'U)
   double l2 = 2 * std::real(arma::log_det(arma::trimatu(UtVinvU_R)));
 
-  vec scaleStd = arma::join_vert(arma::ones(M_L1) / sqrt(noiseVarianceEstimates_.first),
-                                arma::ones(M_L2) / sqrt(noiseVarianceEstimates_.second));
-  mat scaleStdDiag = arma::diagmat(scaleStd);
-  mat HGamma = H * scaleStdDiag * dataRegionCombined_ * dataRegionCombined_.t() * scaleStdDiag;
+  vec HX = H * dataRegionCombined_;
 
-  double l3 = arma::trace(HGamma);
+  double l3 = arma::trace(HX * dataRegionCombined_.t());
   double negLL = l1 + l2 + l3;
 
   // Compute gradients
@@ -143,9 +141,7 @@ double OptInter::EvaluateWithGradient(
 
   double rho_deriv = sigmoid_inv_derivative(rho, -1, 1);
 
-  HGamma *= -1;
-  HGamma.diag() += 1;
-  mat HGammaH = HGamma * H;
+  mat HGammaH = H - HX * HX.t();
   gradient(0) =  rho_deriv * trace(dVdrho * HGammaH);
   gradient(1) =  logistic(kEta1) * trace(dVdkEta1 * HGammaH);
   gradient(2) =  logistic(kEta2) * trace(dVdkEta2 * HGammaH);
@@ -173,12 +169,9 @@ double OptInter::Evaluate(const arma::mat &theta_unrestrict)
   double tauEta = softplus(theta_unrestrict(3));
   double nuggetEta = softplus(theta_unrestrict(4));
 
-  // log-likelihood components
-  int M_L1 = numTimePt_*numVoxelRegion1_;
-  int M_L2 = numTimePt_*numVoxelRegion2_;
-
   // A Matrix
-  mat At = rbf(timeSqrd_, tauEta) + diagmat(vec(numTimePt_, arma::fill::value(nuggetEta)));
+  mat At = rbf(timeSqrd_, tauEta);
+  At.diag() += nuggetEta;
 
   mat M_12 = arma::repmat(
       rho*sqrt(kEta1)*sqrt(kEta2)*At, numVoxelRegion1_, numVoxelRegion2_);
@@ -195,24 +188,24 @@ double OptInter::Evaluate(const arma::mat &theta_unrestrict)
     join_horiz(M_12.t(), M_22)
   );
 
-  mat Vinv = arma::inv_sympd(V);
-  mat VinvU = Vinv * design_;
+  mat VR = arma::chol(V);
+  mat VRinv = arma::inv(arma::trimatu(VR));
+
+  mat Vinv = VRinv * VRinv.t();
+  mat VinvU = arma::solve(arma::trimatu(VR), VRinv.t() * design_);
   mat UtVinvU = design_.t() * VinvU;
-  mat H = Vinv - VinvU * arma::inv_sympd(UtVinvU) * VinvU.t();
+  mat UtVinvU_R = arma::chol(UtVinvU);
+  mat Rinv = arma::inv(arma::trimatu(UtVinvU_R));
+  mat H = Vinv - VinvU * Rinv * Rinv.t() * VinvU.t();
 
-  // l1 is logdet(Vjj')
-  // l1 = arma::sum(arma::log(M_22_chol.diag())) + arma::sum(arma::log(C_11_chol.diag()));
-  double l1 = arma::log_det_sympd(V);
-  // l2 is logdet(UtVinvjj'U)
-  double l2 = arma::log_det_sympd(UtVinvU);
+  // l1 is logdet(V)
+  double l1 = 2 * std::real(arma::log_det(arma::trimatu(VR)));
+  // l2 is logdet(UtVinvU)
+  double l2 = 2 * std::real(arma::log_det(arma::trimatu(UtVinvU_R)));
 
-  vec scaleStd = arma::join_vert(arma::ones(M_L1) / sqrt(noiseVarianceEstimates_.first),
-                                arma::ones(M_L2) / sqrt(noiseVarianceEstimates_.second));
-  mat scaleStdDiag = arma::diagmat(scaleStd);
-  mat Hscaled = H*scaleStdDiag * dataRegionCombined_ * dataRegionCombined_.t() * scaleStdDiag;
+  vec HX = H * dataRegionCombined_;
 
-  double l3 = arma::trace(Hscaled);
-
+  double l3 = arma::trace(HX * dataRegionCombined_.t());
   double negLL = l1 + l2 + l3;
 
   return negLL;

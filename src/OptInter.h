@@ -6,9 +6,7 @@
 class OptInter
 {
 protected:
-  const arma::vec dataRegion1_;
-  const arma::vec dataRegion2_;
-  const arma::vec dataRegionCombined_;
+  arma::vec dataRegionCombined_;
   arma::mat design_;
   int numVoxelRegion1_;
   int numVoxelRegion2_;
