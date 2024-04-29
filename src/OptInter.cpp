@@ -90,7 +90,7 @@ double OptInter::EvaluateWithGradient(
 
   vec HX = H * dataRegionCombined_;
 
-  double l3 = arma::trace(HX * dataRegionCombined_.t());
+  double l3 = arma::as_scalar(dataRegionCombined_.t() * HX);
   double negLL = l1 + l2 + l3;
 
   // Compute gradients
@@ -141,12 +141,12 @@ double OptInter::EvaluateWithGradient(
 
   double rho_deriv = sigmoid_inv_derivative(rho, -1, 1);
 
-  mat HGammaH = H - HX * HX.t();
-  gradient(0) =  rho_deriv * trace(dVdrho * HGammaH);
-  gradient(1) =  logistic(kEta1) * trace(dVdkEta1 * HGammaH);
-  gradient(2) =  logistic(kEta2) * trace(dVdkEta2 * HGammaH);
-  gradient(3) =  logistic(tauEta) * trace(dVdtauEta * HGammaH);
-  gradient(4) =  logistic(nuggetEta) * trace(dVdnugget * HGammaH);
+  H -= HX * HX.t();
+  gradient(0) =  rho_deriv * trace(dVdrho * H);
+  gradient(1) =  logistic(kEta1) * trace(dVdkEta1 * H);
+  gradient(2) =  logistic(kEta2) * trace(dVdkEta2 * H);
+  gradient(3) =  logistic(tauEta) * trace(dVdtauEta * H);
+  gradient(4) =  logistic(nuggetEta) * trace(dVdnugget * H);
 
   // Rcpp::Rcout << "NegLL: " << std::setprecision(10) << negLL << std::endl;
 
@@ -198,14 +198,14 @@ double OptInter::Evaluate(const arma::mat &theta_unrestrict)
   mat Rinv = arma::inv(arma::trimatu(UtVinvU_R));
   mat H = Vinv - VinvU * Rinv * Rinv.t() * VinvU.t();
 
-  // l1 is logdet(V)
-  double l1 = 2 * std::real(arma::log_det(arma::trimatu(VR)));
-  // l2 is logdet(UtVinvU)
+  // l1 is logdet(Vjj')
+  double l1 = 2 * arma::sum(arma::log(arma::diagvec(VR)));
+  // l2 is logdet(UtVinvjj'U)
   double l2 = 2 * std::real(arma::log_det(arma::trimatu(UtVinvU_R)));
 
   vec HX = H * dataRegionCombined_;
 
-  double l3 = arma::trace(HX * dataRegionCombined_.t());
+  double l3 = arma::as_scalar(dataRegionCombined_.t() * HX);
   double negLL = l1 + l2 + l3;
 
   return negLL;
