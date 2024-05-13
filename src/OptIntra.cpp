@@ -20,8 +20,7 @@ OptIntra::OptIntra(const arma::mat &data, const arma::mat &distSqrd,
 
 double OptIntra::EvaluateWithGradient(const arma::mat &theta,
                                       arma::mat &gradient) {
-  using arma::mat;
-  using arma::vec;
+  using namespace arma;
 
   double scaleSpatial = softplus(theta(0));
   double scaleTemporal = softplus(theta(1));
@@ -53,8 +52,8 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
         eigenInv % kronecker_mvm(spatialEigvec.t(), temporalEigvec.t(), uCol));
   });
   mat UtVinvU = U.t() * vInvU;
-  mat G = vInvU * arma::inv_sympd(UtVinvU);
-  vec etaTildeStar = G.t() * data_;
+  mat Gt = arma::inv_sympd(UtVinvU) * vInvU.t();
+  vec etaTildeStar = Gt * data_;
 
   vec dataCentered = data_ - U * etaTildeStar;
   vec vInvCentered =
@@ -98,14 +97,31 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
                 eigvalOuterInv.t() * arma::diagvec(temporalCovarEig));
 
   // Second part
+  cube spatialColumnsVec(numTimePt_, numVoxel_, vInvU.n_cols);
+  for (int i = 0; i < (int) vInvU.n_cols; i++)
+  {
+    spatialColumnsVec.slice(i) =
+      arma::reshape(vInvU.col(i), numTimePt_, numVoxel_) * covarSpatial.t();
+  }
+
+  cube spatialDvar = dTemporalDvar * spatialColumnsVec.each_slice();
   double trace2VarTemporal =
-      arma::trace(G.t() * kronecker_mmm(covarSpatial, dTemporalDvar, vInvU));
-  double trace2VarTemporalNugget =
-      arma::trace(G.t() * kronecker_mmm(covarSpatial, timeIdentity, vInvU));
+    arma::trace(Gt *
+      mat(spatialDvar.memptr(), spatialDvar.n_rows * spatialDvar.n_cols, spatialDvar.n_slices, false));
+
+  cube spatialDscale = dTemporalDscale * spatialColumnsVec.each_slice();
   double trace2ScaleTemporal =
-      arma::trace(G.t() * kronecker_mmm(covarSpatial, dTemporalDscale, vInvU));
-  double trace2ScaleSpatial =
-      arma::trace(G.t() * kronecker_mmm(dSpatialDscale, covarTemporal, vInvU));
+    arma::trace(Gt *
+      mat(spatialDscale.memptr(), spatialDscale.n_rows * spatialDscale.n_cols, spatialDscale.n_slices, false));
+
+  double trace2VarTemporalNugget =
+    arma::trace(Gt *
+      mat(spatialColumnsVec.memptr(), spatialColumnsVec.n_rows * spatialColumnsVec.n_cols, spatialColumnsVec.n_slices, false));
+
+  vInvU.each_col([&dSpatialDscale, &covarTemporal](arma::vec &uCol) {
+    uCol = kronecker_mvm(dSpatialDscale, covarTemporal, uCol);
+  });
+  double trace2ScaleSpatial = arma::trace(Gt * vInvU);
 
   // Third part
   mat dataTemporalVar1 =
@@ -113,7 +129,7 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
       kronecker_mvm(covarSpatial, dTemporalDvar, vInvCentered);
   mat dataTemporalVar2 =
       2 * vInvCentered.t() * U *
-      (-G.t() * kronecker_mvm(covarSpatial, dTemporalDvar, vInvCentered));
+      (-Gt * kronecker_mvm(covarSpatial, dTemporalDvar, vInvCentered));
   double dataTemporalVarNum = dataTemporalVar1(0, 0) + dataTemporalVar2(0, 0);
 
   mat dataTemporalVarNugget1 =
@@ -121,7 +137,7 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
       kronecker_mvm(covarSpatial, timeIdentity, vInvCentered);
   mat dataTemporalVarNugget2 =
       2 * vInvCentered.t() * U *
-      (-G.t() * kronecker_mvm(covarSpatial, timeIdentity, vInvCentered));
+      (-Gt * kronecker_mvm(covarSpatial, timeIdentity, vInvCentered));
   double dataTemporalVarNuggetNum =
       dataTemporalVarNugget1(0, 0) + dataTemporalVarNugget2(0, 0);
 
@@ -130,7 +146,7 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
       kronecker_mvm(covarSpatial, dTemporalDscale, vInvCentered);
   mat dataTemporalScale2 =
       2 * vInvCentered.t() * U *
-      (-G.t() * kronecker_mvm(covarSpatial, dTemporalDscale, vInvCentered));
+      (-Gt * kronecker_mvm(covarSpatial, dTemporalDscale, vInvCentered));
   double dataTemporalScaleNum =
       dataTemporalScale1(0, 0) + dataTemporalScale2(0, 0);
 
@@ -139,7 +155,7 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
       kronecker_mvm(dSpatialDscale, covarTemporal, vInvCentered);
   mat dataSpatialScale2 =
       2 * vInvCentered.t() * U *
-      (-G.t() * kronecker_mvm(dSpatialDscale, covarTemporal, vInvCentered));
+      (-Gt * kronecker_mvm(dSpatialDscale, covarTemporal, vInvCentered));
   double dataSpatialScaleNum =
       dataSpatialScale1(0, 0) + dataSpatialScale2(0, 0);
 
