@@ -55,6 +55,7 @@ qfuncMM <- function(region_list, voxel_coords,
                                             c("phi_gamma", "tau_gamma",
                                               "k_gamma", "nugget_gamma",
                                               "var_noise")))
+  stage1_eblue <- matrix(nrow = n_region, ncol = n_timept)
 
   if (verbose) {
     cat("Stage 1: estimating intra-regional parameters...\n")
@@ -67,6 +68,7 @@ qfuncMM <- function(region_list, voxel_coords,
                              time_sqrd_mat)
 
     stage1_regional[regid, ] <- intra$intra_param
+    stage1_eblue[regid, ] <- intra$eblue
   }
 
   if (verbose) {
@@ -87,10 +89,14 @@ qfuncMM <- function(region_list, voxel_coords,
                                         c("k_eta1", "k_eta2",
                                           "tau_eta", "nugget_eta",
                                           "var_noise1", "var_noise2")))
+  stage2_eblue <- matrix(1, nrow = n_region, ncol = n_region)
 
   # Run stage 2 for each pair of regions
   for (reg1 in seq_len(n_region)) {
     for (reg2 in seq_len(reg1 - 1)) {
+      stage2_eblue[reg1, reg2] <- cor(stage1_eblue[reg1, ], stage1_eblue[reg2, ])
+      stage2_eblue[reg2, reg1] <- stage2_eblue[reg1, reg2]
+
       stage2_result <- fit_inter_model(region_list[[reg1]],
                                        voxel_coords[[reg1]],
                                        region_list[[reg2]],
@@ -111,5 +117,5 @@ qfuncMM <- function(region_list, voxel_coords,
     cat("Finished stage 2.\n")
   }
 
-  list(rho = cor_mx, stage1 = stage1_regional, stage2 = stage2_inter)
+  list(rho = cor_mx, rho_eblue = stage2_eblue, stage1 = stage1_regional, stage2 = stage2_inter)
 }

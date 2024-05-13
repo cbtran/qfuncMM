@@ -12,6 +12,7 @@ class OptIntra {
   int numTimePt_;
   KernelType kernelType_;  // Choice of spatial kernel
   double noiseVarianceEstimate_;
+  arma::vec eblue_;
 
  public:
   OptIntra(const arma::mat& data, const arma::mat& distSqrd,
@@ -20,6 +21,7 @@ class OptIntra {
   // Compute objective function update gradient
   double EvaluateWithGradient(const arma::mat& theta, arma::mat& gradient);
   double GetNoiseVarianceEstimate();
+  arma::vec GetEBlue();
 };
 
 #endif

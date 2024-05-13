@@ -20,5 +20,5 @@ fit_intra_model <- function(
   intra <- opt_intra(param_init, matrix(region_mx, ncol = 1),
                      voxel_coords, time_sqrd_mat, kernel_type_id)
 
-  list(intra_param = c(intra$theta, intra$var_noise))
+  list(intra_param = c(intra$theta, intra$var_noise), eblue = intra$eblue)
 }

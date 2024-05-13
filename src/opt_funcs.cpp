@@ -51,7 +51,8 @@ Rcpp::List opt_intra(const arma::vec& theta_init,
 
   return Rcpp::List::create(
     Rcpp::Named("theta") = theta,
-    Rcpp::Named("var_noise") = opt_intra.GetNoiseVarianceEstimate());
+    Rcpp::Named("var_noise") = opt_intra.GetNoiseVarianceEstimate(),
+    Rcpp::Named("eblue") = opt_intra.GetEBlue());
 }
 
 class StatusCallback

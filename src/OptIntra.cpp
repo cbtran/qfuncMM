@@ -12,7 +12,8 @@ OptIntra::OptIntra(const arma::mat &data, const arma::mat &distSqrd,
       distSqrd_(distSqrd),
       timeSqrd_(timeSqrd),
       kernelType_(kernelType),
-      noiseVarianceEstimate_(-1)
+      noiseVarianceEstimate_(-1),
+      eblue_(-1)
 {
     numVoxel_ = distSqrd.n_rows;
     numTimePt_ = timeSqrd.n_rows;
@@ -30,8 +31,6 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
 //             << scaleSpatial << " " << scaleTemporal << " " << varTemporal << " "
 //             << varTemporalNugget << std::endl;
   mat timeIdentity = arma::eye(numTimePt_, numTimePt_);
-  mat timeSpaceIdentity =
-      arma::eye(numTimePt_ * numVoxel_, numTimePt_ * numVoxel_);
   mat U = arma::repmat(timeIdentity, numVoxel_, 1);
 
   mat timeRbf = rbf(timeSqrd_, scaleTemporal);
@@ -53,9 +52,8 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
   });
   mat UtVinvU = U.t() * vInvU;
   mat Gt = arma::inv_sympd(UtVinvU) * vInvU.t();
-  vec etaTildeStar = Gt * data_;
-
-  vec dataCentered = data_ - U * etaTildeStar;
+  eblue_ = Gt * data_;
+  vec dataCentered = data_ - U * eblue_;
   vec vInvCentered =
       kronecker_mvm(spatialEigvec, temporalEigvec,
                     eigenInv % kronecker_mvm(spatialEigvec.t(),
@@ -194,4 +192,8 @@ double OptIntra::GetNoiseVarianceEstimate() {
         "Noise variance estimate not computed yet. You must optimize first.");
   }
   return noiseVarianceEstimate_;
+}
+
+arma::vec OptIntra::GetEBlue() {
+  return eblue_;
 }
