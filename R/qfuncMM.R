@@ -83,18 +83,18 @@ qfuncMM <- function(region_list, voxel_coords,
   cor_mx <- matrix(1, nrow = n_region, ncol = n_region,
                    dimnames = list(paste0("r", seq_len(n_region)),
                                    paste0("r", seq_len(n_region))))
-  stage2_inter <- array(dim = c(n_region, n_region, 6),
+  stage2_inter <- array(dim = c(n_region, n_region, 4),
                         dimnames = list(paste0("r", seq_len(n_region)),
                                         paste0("r", seq_len(n_region)),
                                         c("k_eta1", "k_eta2",
-                                          "tau_eta", "nugget_eta",
-                                          "var_noise1", "var_noise2")))
+                                          "tau_eta", "nugget_eta")))
   stage2_eblue <- matrix(1, nrow = n_region, ncol = n_region)
+  rho_ca <- matrix(1, nrow = n_region, ncol = n_region)
 
   # Run stage 2 for each pair of regions
-  for (reg1 in seq_len(n_region)) {
-    for (reg2 in seq_len(reg1 - 1)) {
-      stage2_eblue[reg1, reg2] <- cor(stage1_eblue[reg1, ], stage1_eblue[reg2, ])
+  for (reg1 in seq_len(n_region - 1)) {
+    for (reg2 in seq(reg1 + 1, n_region)) {
+      stage2_eblue[reg1, reg2] <- cor(stage1_eblue[reg1, ], stage1_eblue[reg2, ]) * (n_timept - 1) / n_timept
       stage2_eblue[reg2, reg1] <- stage2_eblue[reg1, reg2]
 
       stage2_result <- fit_inter_model(region_list[[reg1]],
@@ -105,10 +105,13 @@ qfuncMM <- function(region_list, voxel_coords,
                                        stage1_regional[reg1, ],
                                        stage1_regional[reg2, ],
                                        kernel_type_id)
-      cor_mx[reg1, reg2] <- stage2_result$rho
-      cor_mx[reg2, reg1] <- stage2_result$rho
-      stage2_inter[reg1, reg2, ] <- as.numeric(stage2_result[-1])
+      cor_mx[reg1, reg2] <- stage2_result$params["rho"]
+      cor_mx[reg2, reg1] <- stage2_result$params["rho"]
+      stage2_inter[reg1, reg2, ] <- stage2_result$params[-1]
       stage2_inter[reg2, reg1, ] <- stage2_inter[reg1, reg2, ]
+
+      rho_ca[reg1, reg2] <- stage2_result$rho_ca
+      rho_ca[reg2, reg1] <- stage2_result$rho_ca
       cat("Finished region pair", reg1, "-", reg2, "\n")
     }
   }
@@ -117,5 +120,5 @@ qfuncMM <- function(region_list, voxel_coords,
     cat("Finished stage 2.\n")
   }
 
-  list(rho = cor_mx, rho_eblue = stage2_eblue, stage1 = stage1_regional, stage2 = stage2_inter)
+  list(rho = cor_mx, rho_eblue = stage2_eblue, rho_ca = rho_ca, stage1 = stage1_regional, stage2 = stage2_inter)
 }

@@ -22,11 +22,11 @@ fit_inter_model <- function(
     region2_stage1,
     kernel_type_id) {
 
-  ca <- compute_ca(region1_mx, region2_mx)
   # Parameter list: rho, kEta1, kEta2, tauEta, nugget
   softminus <- function(x) {
     log(exp(x) - 1)
   }
+  ca <- compute_ca(region1_mx, region2_mx)
   # Reasonable initiliazation
   init <- c(ca, softminus(1), softminus(1), 0, softminus(0.1))
 
@@ -40,17 +40,7 @@ fit_inter_model <- function(
                       stage1ParamsRegion2 = region2_stage1,
                       kernel_type_id = kernel_type_id)
 
-  result <- as.list(c(result$theta, result$var_noise))
-  names(result) <- c("rho", "k_eta1", "k_eta2", "tau_eta",
-                     "nugget_eta", "var_noise1", "var_noise2")
-  return(result)
-}
-
-# Compute the correlation of averages for two regions
-compute_ca <- function(region1_mx, region2_mx) {
-  r1avg <- apply(region1_mx, 1, mean)
-  r2avg <- apply(region2_mx, 1, mean)
-  r1avgavg <- r1avg - mean(r1avg)
-  r2avgavg <- r2avg - mean(r2avg)
-  sum(r1avgavg * r2avgavg) / (stats::sd(r1avg) * stats::sd(r2avg) * length(r1avg))
+  params <- result$theta
+  names(params) <- c("rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta")
+  return(list(params = params, rho_ca = ca))
 }
