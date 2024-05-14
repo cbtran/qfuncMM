@@ -11,7 +11,6 @@
 #' @param kernel_type_id Choice of spatial kernel
 #' @return Estimated stage 2 parameters
 #' @noRd
-#' @export
 
 fit_inter_model <- function(
     region1_mx,
