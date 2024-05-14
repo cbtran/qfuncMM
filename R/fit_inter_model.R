@@ -5,8 +5,9 @@
 #' @param region2_mx Data matrix of signals of region 2
 #' @param voxel_coords_2 coordinates of voxels in region 2
 #' @param time_sqrd_mat Temporal squared distance matrix
-#' @param region1_stage1, Estimated stage1 parameters for region 1
-#' @param region2_stage1, Estimated stage1 parameters for region 2
+#' @param region1_stage1, Estimated stage 1 parameters for region 1
+#' @param region2_stage1, Estimated stage 1 parameters for region 2
+#' @param rho_eblue, EBLUE from stage 1 for initialization
 #' @param kernel_type_id Choice of spatial kernel
 #' @return Estimated stage 2 parameters
 #' @noRd
@@ -20,15 +21,15 @@ fit_inter_model <- function(
     time_sqrd_mat,
     region1_stage1,
     region2_stage1,
+    rho_eblue,
     kernel_type_id) {
 
   # Parameter list: rho, kEta1, kEta2, tauEta, nugget
   softminus <- function(x) {
     log(exp(x) - 1)
   }
-  ca <- compute_ca(region1_mx, region2_mx)
-  # Reasonable initiliazation
-  init <- c(ca, softminus(1), softminus(1), 0, softminus(0.1))
+  # Use the EBLUE as a reasonable initialization.
+  init <- c(rho_eblue, softminus(1), softminus(1), 0, softminus(0.1))
 
   result <- opt_inter(theta_init = init,
                       dataRegion1 = region1_mx,
@@ -42,5 +43,5 @@ fit_inter_model <- function(
 
   params <- result$theta
   names(params) <- c("rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta")
-  return(list(params = params, rho_ca = ca))
+  return(params = params)
 }

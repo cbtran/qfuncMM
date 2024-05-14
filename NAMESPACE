@@ -3,4 +3,5 @@
 export(fit_inter_model)
 export(qfuncMM)
 importFrom(Rcpp,sourceCpp)
+importFrom(stats,cor)
 useDynLib(qfuncMM)
