@@ -46,7 +46,7 @@ Rcpp::List opt_intra(const arma::vec& theta_init,
   optimizer.MinGradientNorm() = 1e-4;
 
   // Run the optimization
-  optimizer.Optimize(opt_intra, theta);
+  optimizer.Optimize(opt_intra, theta, ens::GradClipByNorm(100));
   theta = softplus(theta);
 
   return Rcpp::List::create(
