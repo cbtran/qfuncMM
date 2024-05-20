@@ -40,13 +40,13 @@ qfuncMM <- function(region_list, voxel_coords,
     }
     n_voxel[i] <- ncol(region_list[[i]])
     if (n_voxel[i] != nrow(voxel_coords[[i]])) {
-      stop(sprintf("Region %d: Inconsistent number of voxels (cols)", i))
+      stop(sprintf("Region %d: Inconsistent number of voxels (columns)", i))
     }
   }
 
   if (verbose) {
     message("Running QFunCMM with ", n_region, " regions and ",
-            n_timept, " time points.\n")
+            n_timept, " time points.")
   }
 
   time_sqrd_mat <- outer(seq_len(n_timept), seq_len(n_timept), `-`)^2
@@ -59,7 +59,7 @@ qfuncMM <- function(region_list, voxel_coords,
   stage1_eblue <- matrix(nrow = n_region, ncol = n_timept)
 
   if (verbose) {
-    message("Stage 1: estimating intra-regional parameters...\n")
+    message("Stage 1: estimating intra-regional parameters...")
   }
 
   for (regid in seq_along(region_list)) {
@@ -78,7 +78,7 @@ qfuncMM <- function(region_list, voxel_coords,
 
   # Matrix of asymptotic variances for region pairs
   if (verbose) {
-    message("Stage 2: estimating inter-regional correlations...\n")
+    message("Stage 2: estimating inter-regional correlations...")
   }
 
   region_dimnames <- list(paste0("r", seq_len(n_region)),
@@ -123,7 +123,7 @@ qfuncMM <- function(region_list, voxel_coords,
   }
 
   if (verbose) {
-    message("Finished stage 2.\n")
+    message("Finished stage 2.")
   }
 
   list(rho = rho, rho_eblue = rho_eblue, rho_ca = rho_ca, stage1 = stage1_regional, stage2 = stage2_inter)

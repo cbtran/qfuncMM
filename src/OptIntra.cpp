@@ -27,9 +27,9 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
   double scaleTemporal = softplus(theta(1));
   double varTemporal = softplus(theta(2));
   double varTemporalNugget = softplus(theta(3));
-//   std::cout << "=== Theta ===\n"
-//             << scaleSpatial << " " << scaleTemporal << " " << varTemporal << " "
-//             << varTemporalNugget << std::endl;
+  Rcpp::Rcout << "=== Theta ===\n"
+            << scaleSpatial << " " << scaleTemporal << " " << varTemporal << " "
+            << varTemporalNugget << std::endl;
   mat timeIdentity = arma::eye(numTimePt_, numTimePt_);
   mat U = arma::repmat(timeIdentity, numVoxel_, 1);
 
@@ -176,12 +176,12 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
                  dataTemporalVarNuggetNum / noiseVarianceEstimate_) *
                 logistic(varTemporalNugget);
 
-//   std::cout << "=== Gradient ===\n";
-//   std::cout << gradient(0) << " " << gradient(1) << " " << gradient(2) << " "
-//             << gradient(3) << " " << arma::norm(gradient) << std::endl;
-//   std::cout << "logreml: " << logremlval << std::endl;
-  // std::cout << scaleSpatial << " " << scaleTemporal << " " << varTemporal <<
-  // " " << varTemporalNugget << std::endl;
+  Rcpp::Rcout << "=== Gradient ===\n";
+  Rcpp::Rcout << gradient(0) << " " << gradient(1) << " " << gradient(2) << " "
+            << gradient(3) << " " << arma::norm(gradient) << std::endl;
+  Rcpp::Rcout << "logreml: " << logremlval << std::endl;
+  Rcpp::Rcout << scaleSpatial << " " << scaleTemporal << " " << varTemporal <<
+  " " << varTemporalNugget << std::endl;
 
   return logremlval;
 }
