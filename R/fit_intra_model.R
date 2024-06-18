@@ -13,12 +13,15 @@ fit_intra_model <- function(
     voxel_coords,
     kernel_type_id,
     time_sqrd_mat) {
-
   # Param list: phi, tau_gamma, k_gamma, nugget_gamma
   param_init <- c(0, 0, 0, 0)
 
-  intra <- opt_intra(param_init, matrix(region_mx, ncol = 1),
-                     voxel_coords, time_sqrd_mat, kernel_type_id)
+  intra <- opt_intra(
+    param_init, matrix(region_mx, ncol = 1),
+    voxel_coords, time_sqrd_mat, kernel_type_id
+  )
 
-  list(intra_param = c(intra$theta, intra$var_noise), eblue = intra$eblue)
+  intra_param <- c(intra$theta, intra$var_noise)
+  names(intra_param) <- c("phi", "tau_gamma", "k_gamma", "nugget_gamma", "var_noise")
+  list(intra_param = intra_param, eblue = intra$eblue)
 }
