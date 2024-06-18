@@ -45,28 +45,42 @@ qfuncMM <- function(region_list, voxel_coords,
   }
 
   if (verbose) {
-    message("Running QFunCMM with ", n_region, " regions and ",
-            n_timept, " time points.")
+    message(
+      "Running QFunCMM with ", n_region, " regions and ",
+      n_timept, " time points."
+    )
   }
 
   time_sqrd_mat <- outer(seq_len(n_timept), seq_len(n_timept), `-`)^2
 
-  stage1_regional <- matrix(nrow = n_region, ncol = 5,
-                            dimnames = list(paste0("r", seq_len(n_region)),
-                                            c("phi_gamma", "tau_gamma",
-                                              "k_gamma", "nugget_gamma",
-                                              "var_noise")))
+  stage1_regional <- matrix(
+    nrow = n_region, ncol = 5,
+    dimnames = list(
+      paste0("r", seq_len(n_region)),
+      c(
+        "phi_gamma", "tau_gamma",
+        "k_gamma", "nugget_gamma",
+        "var_noise"
+      )
+    )
+  )
   stage1_eblue <- matrix(nrow = n_region, ncol = n_timept)
 
   if (verbose) {
     message("Stage 1: estimating intra-regional parameters...")
   }
 
-  for (regid in seq_along(region_list)) {
-    intra <- fit_intra_model(region_list[[regid]],
-                             voxel_coords[[regid]],
-                             kernel_type_id,
-                             time_sqrd_mat)
+  # Standardize the data matrices
+  # TODO: Should we keep the raw data matrices around?
+  region_list_std <- lapply(region_list, \(reg) (reg - mean(reg)) / stats::sd(reg))
+
+  for (regid in seq_along(region_list_std)) {
+    intra <- fit_intra_model(
+      region_list_std[[regid]],
+      voxel_coords[[regid]],
+      kernel_type_id,
+      time_sqrd_mat
+    )
 
     stage1_regional[regid, ] <- intra$intra_param
     stage1_eblue[regid, ] <- intra$eblue
@@ -81,18 +95,32 @@ qfuncMM <- function(region_list, voxel_coords,
     message("Stage 2: estimating inter-regional correlations...")
   }
 
-  region_dimnames <- list(paste0("r", seq_len(n_region)),
-                          paste0("r", seq_len(n_region)))
-  rho <- matrix(1, nrow = n_region, ncol = n_region,
-                dimnames = list(paste0("r", seq_len(n_region)),
-                                paste0("r", seq_len(n_region))))
-  stage2_inter <- array(dim = c(n_region, n_region, 4),
-                        dimnames = c(region_dimnames,
-                                     list(c("k_eta1", "k_eta2", "tau_eta", "nugget_eta"))))
-  rho_eblue <- matrix(1, nrow = n_region, ncol = n_region,
-                      dimnames = region_dimnames)
-  rho_ca <- matrix(1, nrow = n_region, ncol = n_region,
-                   dimnames = region_dimnames)
+  region_dimnames <- list(
+    paste0("r", seq_len(n_region)),
+    paste0("r", seq_len(n_region))
+  )
+  rho <- matrix(1,
+    nrow = n_region, ncol = n_region,
+    dimnames = list(
+      paste0("r", seq_len(n_region)),
+      paste0("r", seq_len(n_region))
+    )
+  )
+  stage2_inter <- array(
+    dim = c(n_region, n_region, 4),
+    dimnames = c(
+      region_dimnames,
+      list(c("k_eta1", "k_eta2", "tau_eta", "nugget_eta"))
+    )
+  )
+  rho_eblue <- matrix(1,
+    nrow = n_region, ncol = n_region,
+    dimnames = region_dimnames
+  )
+  rho_ca <- matrix(1,
+    nrow = n_region, ncol = n_region,
+    dimnames = region_dimnames
+  )
 
   # Run stage 2 for each pair of regions
   for (reg1 in seq_len(n_region - 1)) {
@@ -101,19 +129,21 @@ qfuncMM <- function(region_list, voxel_coords,
       rho_eblue[reg1, reg2] <- eblue_r12
       rho_eblue[reg2, reg1] <- eblue_r12
 
-      ca <- cor(apply(region_list[[reg1]], 1, mean), apply(region_list[[reg2]], 1, mean))
+      ca <- cor(apply(region_list_std[[reg1]], 1, mean), apply(region_list_std[[reg2]], 1, mean))
       rho_ca[reg1, reg2] <- ca
       rho_ca[reg2, reg1] <- ca
 
-      stage2_result <- fit_inter_model(region_list[[reg1]],
-                                       voxel_coords[[reg1]],
-                                       region_list[[reg2]],
-                                       voxel_coords[[reg2]],
-                                       time_sqrd_mat,
-                                       stage1_regional[reg1, ],
-                                       stage1_regional[reg2, ],
-                                       eblue_r12,
-                                       kernel_type_id)
+      stage2_result <- fit_inter_model(
+        region_list_std[[reg1]],
+        voxel_coords[[reg1]],
+        region_list_std[[reg2]],
+        voxel_coords[[reg2]],
+        time_sqrd_mat,
+        stage1_regional[reg1, ],
+        stage1_regional[reg2, ],
+        eblue_r12,
+        kernel_type_id
+      )
       rho[reg1, reg2] <- stage2_result["rho"]
       rho[reg2, reg1] <- stage2_result["rho"]
       stage2_inter[reg1, reg2, ] <- stage2_result[-1]
