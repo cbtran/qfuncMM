@@ -24,11 +24,10 @@
 //'   var_noise: Estimated noise variance
 //' @noRd
 // [[Rcpp::export]]
-Rcpp::List opt_intra(const arma::vec& theta_init,
-                     const arma::mat& X_region,
-                     const arma::mat& voxel_coords,
-                     const arma::mat& time_sqrd_mat,
-                     int kernel_type_id) {
+Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
+                     const arma::mat &voxel_coords,
+                     const arma::mat &time_sqrd_mat, int kernel_type_id,
+                     bool nugget_only) {
   // Necessary evil since we can't easily expose enums to R
   KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
 
@@ -37,7 +36,13 @@ Rcpp::List opt_intra(const arma::vec& theta_init,
   arma::mat dist_sqrd_mat = squared_distance(voxel_coords);
 
   // Construct the objective function.
-  OptIntra opt_intra(X_region, dist_sqrd_mat, time_sqrd_mat, kernel_type);
+  std::unique_ptr<IOptIntra> opt_intra;
+  if (nugget_only)
+    opt_intra = std::make_unique<OptIntraDiagTime>(X_region, dist_sqrd_mat,
+                                                   time_sqrd_mat, kernel_type);
+  else
+    opt_intra = std::make_unique<OptIntra>(X_region, dist_sqrd_mat,
+                                           time_sqrd_mat, kernel_type);
 
   // Create the L_BFGS optimizer with default parameters.
   ens::L_BFGS optimizer(20);
@@ -46,36 +51,54 @@ Rcpp::List opt_intra(const arma::vec& theta_init,
   optimizer.MinGradientNorm() = 1e-4;
 
   // Run the optimization
-  optimizer.Optimize(opt_intra, theta, ens::GradClipByNorm(100));
+  optimizer.Optimize(*opt_intra, theta);
   theta = softplus(theta);
 
-  return Rcpp::List::create(
-    Rcpp::Named("theta") = theta,
-    Rcpp::Named("var_noise") = opt_intra.GetNoiseVarianceEstimate(),
-    Rcpp::Named("eblue") = opt_intra.GetEBlue());
+  return Rcpp::List::create(Rcpp::Named("theta") = theta,
+                            Rcpp::Named("var_noise") =
+                                opt_intra->GetNoiseVarianceEstimate(),
+                            Rcpp::Named("eblue") = opt_intra->GetEBlue());
 }
 
-class StatusCallback
-{
-  public:
-    StatusCallback() {};
+// [[Rcpp::export]]
+Rcpp::List eval_stage1_nll(const arma::vec &theta, const arma::mat &X_region,
+                           const arma::mat &voxel_coords,
+                           const arma::mat &time_sqrd_mat, int kernel_type_id) {
 
-  template<typename OptimizerType, typename FunctionType>
-  void Gradient(OptimizerType& optimizer,
-                FunctionType& function,
-                const arma::mat& coordinates,
-                const arma::mat& gradient)
-  {
+  arma::mat theta_transformed = theta;
+  theta_transformed = theta_transformed.transform([](double x) {
+    if (x > 100)
+      return x;
+    return log(exp(x) - 1);
+  });
+  // Necessary evil since we can't easily expose enums to R
+  KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
+  arma::mat dist_sqrd_mat = squared_distance(voxel_coords);
+
+  // Construct the objective function.
+  OptIntra opt_intra(X_region, dist_sqrd_mat, time_sqrd_mat, kernel_type);
+
+  arma::mat grad = arma::zeros(4, 1);
+  double nll = opt_intra.EvaluateWithGradient(theta_transformed, grad);
+
+  return Rcpp::List::create(Rcpp::Named("nll") = nll,
+                            Rcpp::Named("grad") = grad);
+}
+
+class StatusCallback {
+public:
+  StatusCallback(){};
+
+  template <typename OptimizerType, typename FunctionType>
+  void Gradient(OptimizerType &optimizer, FunctionType &function,
+                const arma::mat &coordinates, const arma::mat &gradient) {
     // Rcpp::Rcout << "Grad norm: " << arma::norm(gradient) << std::endl;
     Rcpp::Rcout << "params: " << sigmoid_inv(coordinates(0), -1, 1) << ", "
-                            << softplus(coordinates(1)) << ", "
-                            << softplus(coordinates(2)) << ", "
-                            << softplus(coordinates(3)) << ", "
-                            << softplus(coordinates(4)) << std::endl;
-
+                << softplus(coordinates(1)) << ", " << softplus(coordinates(2))
+                << ", " << softplus(coordinates(3)) << ", "
+                << softplus(coordinates(4)) << std::endl;
   }
 };
-
 
 /*****************************************************************************
  Inter-regional model
@@ -98,15 +121,13 @@ class StatusCallback
 //'   objective: optimal loss (negiatve log-likelihood) found.
 //' @noRd
 // [[Rcpp::export]]
-Rcpp::List opt_inter(const arma::vec& theta_init,
-                     const arma::mat& dataRegion1,
-                     const arma::mat& dataRegion2,
-                     const arma::mat& voxel_coords_1,
-                     const arma::mat& voxel_coords_2,
-                     const arma::mat& time_sqrd_mat,
-                     const arma::vec& stage1ParamsRegion1,
-                     const arma::vec& stage1ParamsRegion2,
-                     int kernel_type_id) {
+Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
+                     const arma::mat &dataRegion2,
+                     const arma::mat &voxel_coords_1,
+                     const arma::mat &voxel_coords_2,
+                     const arma::mat &time_sqrd_mat,
+                     const arma::vec &stage1ParamsRegion1,
+                     const arma::vec &stage1ParamsRegion2, int kernel_type_id) {
   using arma::mat;
   using arma::vec;
 
@@ -124,19 +145,21 @@ Rcpp::List opt_inter(const arma::vec& theta_init,
   // Stage 1 param list: phi_gamma, tau_gamma, k_gamma, nugget_gamma, var_noise
   const mat block_region_1 = arma::kron(
       get_cor_mat(kernel_type, sqrd_dist_region1, stage1ParamsRegion1(0)),
-      stage1ParamsRegion1(2) *
-          get_cor_mat(KernelType::Rbf, time_sqrd_mat, stage1ParamsRegion1(1)) +
-          stage1ParamsRegion1(3) * arma::eye(dataRegion1.n_rows, dataRegion1.n_rows));
+      stage1ParamsRegion1(2) * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
+                                           stage1ParamsRegion1(1)) +
+          stage1ParamsRegion1(3) *
+              arma::eye(dataRegion1.n_rows, dataRegion1.n_rows));
 
   const mat block_region_2 = arma::kron(
       get_cor_mat(kernel_type, sqrd_dist_region2, stage1ParamsRegion2(0)),
-      stage1ParamsRegion2(2) *
-          get_cor_mat(KernelType::Rbf, time_sqrd_mat, stage1ParamsRegion2(1)) +
-          stage1ParamsRegion2(3) * arma::eye(dataRegion2.n_rows, dataRegion2.n_rows));
+      stage1ParamsRegion2(2) * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
+                                           stage1ParamsRegion2(1)) +
+          stage1ParamsRegion2(3) *
+              arma::eye(dataRegion2.n_rows, dataRegion2.n_rows));
 
-  OptInter objective(dataRegion1, dataRegion2,
-                     stage1ParamsRegion1, stage1ParamsRegion2,
-                     block_region_1, block_region_2, time_sqrd_mat);
+  OptInter objective(dataRegion1, dataRegion2, stage1ParamsRegion1,
+                     stage1ParamsRegion2, block_region_1, block_region_2,
+                     time_sqrd_mat);
 
   ens::L_BFGS optimizer(10);
   optimizer.MaxIterations() = 50;
@@ -144,23 +167,24 @@ Rcpp::List opt_inter(const arma::vec& theta_init,
   optimizer.MinGradientNorm() = 1e-4;
 
   ens::StoreBestCoordinates<mat> cb;
-  optimizer.Optimize(objective, theta_vec, ens::GradClipByNorm(100), StatusCallback(), cb);
+  optimizer.Optimize(objective, theta_vec, ens::GradClipByNorm(100),
+                     StatusCallback(), cb);
 
-  Rcpp::Rcout << "NegLL Final: " << std::setprecision(10) << cb.BestObjective() << std::endl;
+  Rcpp::Rcout << "NegLL Final: " << std::setprecision(10) << cb.BestObjective()
+              << std::endl;
 
   vec best(cb.BestCoordinates());
   best(0) = sigmoid_inv(best(0), -1, 1); // rho
-  best(1) = softplus(best(1)); // kEta1
-  best(2) = softplus(best(2)); // kEta2
-  best(3) = softplus(best(3)); // tauEta
-  best(4) = softplus(best(4)); // nugget_eta
+  best(1) = softplus(best(1));           // kEta1
+  best(2) = softplus(best(2));           // kEta2
+  best(3) = softplus(best(3));           // tauEta
+  best(4) = softplus(best(4));           // nugget_eta
 
   std::pair<double, double> noise_estimates =
-    objective.GetNoiseVarianceEstimates();
+      objective.GetNoiseVarianceEstimates();
   vec var_noise = {noise_estimates.first, noise_estimates.second};
 
-  return Rcpp::List::create(
-    Rcpp::Named("theta") = best,
-    Rcpp::Named("var_noise") = var_noise,
-    Rcpp::Named("objective") = cb.BestObjective());
+  return Rcpp::List::create(Rcpp::Named("theta") = best,
+                            Rcpp::Named("var_noise") = var_noise,
+                            Rcpp::Named("objective") = cb.BestObjective());
 }

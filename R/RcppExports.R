@@ -34,8 +34,12 @@ NULL
 #'   theta: Estimated intra-regional parameters
 #'   var_noise: Estimated noise variance
 #' @noRd
-opt_intra <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id) {
-    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id)
+opt_intra <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, nugget_only) {
+    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, nugget_only)
+}
+
+eval_stage1_nll <- function(theta, X_region, voxel_coords, time_sqrd_mat, kernel_type_id) {
+    .Call('_qfuncMM_eval_stage1_nll', PACKAGE = 'qfuncMM', theta, X_region, voxel_coords, time_sqrd_mat, kernel_type_id)
 }
 
 #' @title Fit inter-regional model using L-BFGS
