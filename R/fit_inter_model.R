@@ -21,24 +21,29 @@ fit_inter_model <- function(
     region1_stage1,
     region2_stage1,
     rho_eblue,
-    kernel_type_id) {
-
+    kernel_type_id, diag_time = FALSE) {
   # Parameter list: rho, kEta1, kEta2, tauEta, nugget
   softminus <- function(x) {
     log(exp(x) - 1)
   }
   # Use the EBLUE as a reasonable initialization.
   init <- c(rho_eblue, softminus(1), softminus(1), 0, softminus(0.1))
+  if (diag_time) {
+    init <- c(rho_eblue, softminus(1), softminus(1))
+  }
 
-  result <- opt_inter(theta_init = init,
-                      dataRegion1 = region1_mx,
-                      dataRegion2 = region2_mx,
-                      voxel_coords_1 = voxel_coords_1,
-                      voxel_coords_2 = voxel_coords_2,
-                      time_sqrd_mat = time_sqrd_mat,
-                      stage1ParamsRegion1 = region1_stage1,
-                      stage1ParamsRegion2 = region2_stage1,
-                      kernel_type_id = kernel_type_id)
+  result <- opt_inter(
+    theta_init = init,
+    dataRegion1 = region1_mx,
+    dataRegion2 = region2_mx,
+    voxel_coords_1 = voxel_coords_1,
+    voxel_coords_2 = voxel_coords_2,
+    time_sqrd_mat = time_sqrd_mat,
+    stage1ParamsRegion1 = region1_stage1,
+    stage1ParamsRegion2 = region2_stage1,
+    kernel_type_id = kernel_type_id,
+    diag_time = diag_time
+  )
 
   params <- result$theta
   names(params) <- c("rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta")

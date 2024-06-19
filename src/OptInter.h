@@ -3,62 +3,77 @@
 
 #include <RcppArmadillo.h>
 
-class OptInter
-{
+class IOptInter {
 protected:
   arma::vec dataRegionCombined_;
   arma::mat design_;
   int numVoxelRegion1_;
   int numVoxelRegion2_;
   int numTimePt_;
-  const arma::mat& spaceTimeKernelRegion1_;
-  const arma::mat& spaceTimeKernelRegion2_;
-  const arma::mat& timeSqrd_;
+  const arma::mat &spaceTimeKernelRegion1_;
+  const arma::mat &spaceTimeKernelRegion2_;
+  const arma::mat &timeSqrd_;
   std::pair<double, double> noiseVarianceEstimates_;
 
 public:
-  OptInter(const arma::mat& dataRegion1,
-           const arma::mat& dataRegion2,
-           const arma::vec& stage1ParamsRegion1,
-           const arma::vec& stage1ParamsRegion2,
-           const arma::mat& spatialKernelRegion1,
-           const arma::mat& spatialKernelRegion2,
-           const arma::mat& timeSqrd);
+  IOptInter(const arma::mat &dataRegion1, const arma::mat &dataRegion2,
+            const arma::vec &stage1ParamsRegion1,
+            const arma::vec &stage1ParamsRegion2,
+            const arma::mat &spatialKernelRegion1,
+            const arma::mat &spatialKernelRegion2, const arma::mat &timeSqrd)
+      : numVoxelRegion1_(dataRegion1.n_cols),
+        numVoxelRegion2_(dataRegion2.n_cols), numTimePt_(dataRegion1.n_rows),
+        spaceTimeKernelRegion1_(spatialKernelRegion1),
+        spaceTimeKernelRegion2_(spatialKernelRegion2), timeSqrd_(timeSqrd),
+        noiseVarianceEstimates_(
+            std::make_pair(stage1ParamsRegion1(4), stage1ParamsRegion2(4))) {
+    using namespace arma;
+    design_ = join_vert(join_horiz(ones(numTimePt_ * numVoxelRegion1_, 1),
+                                   zeros(numTimePt_ * numVoxelRegion1_, 1)),
+                        join_horiz(zeros(numTimePt_ * numVoxelRegion2_, 1),
+                                   ones(numTimePt_ * numVoxelRegion2_, 1)));
+    dataRegionCombined_ = join_vert(
+        vectorise(dataRegion1) / sqrt(noiseVarianceEstimates_.first),
+        vectorise(dataRegion2) / sqrt(noiseVarianceEstimates_.second));
+  }
 
-  // Compute both objective function and its gradient
-  virtual double EvaluateWithGradient(
-      const arma::mat &theta_unrestrict, arma::mat &gradient);
+  virtual double EvaluateWithGradient(const arma::mat &theta_unrestrict,
+                                      arma::mat &gradient) = 0;
 
-  // double EvaluateWithGradientFast(
-  //     const arma::mat &theta_unrestrict, arma::mat &gradient);
+  virtual double Evaluate(const arma::mat &theta) = 0;
 
-  // Compute both objective function and its gradient
-  virtual double Evaluate(const arma::mat &theta);
-
-  std::pair<double, double> GetNoiseVarianceEstimates();
+  std::pair<double, double> GetNoiseVarianceEstimates() {
+    return noiseVarianceEstimates_;
+  }
 };
 
-class OptInterProfiled : public OptInter
-{
-private:
-  double ComputeGradient(
-    const arma::mat &H, const arma::mat &dHdq, const arma::mat &dVdq);
-
+class OptInter : public IOptInter {
 public:
-  OptInterProfiled(const arma::mat& dataRegion1,
-               const arma::mat& dataRegion2,
-               const arma::vec& stage1ParamsRegion1,
-               const arma::vec& stage1ParamsRegion2,
-               const arma::mat& spatialKernelRegion1,
-               const arma::mat& spatialKernelRegion2,
-               const arma::mat& timeSqrd);
+  OptInter(const arma::mat &dataRegion1, const arma::mat &dataRegion2,
+           const arma::vec &stage1ParamsRegion1,
+           const arma::vec &stage1ParamsRegion2,
+           const arma::mat &spatialKernelRegion1,
+           const arma::mat &spatialKernelRegion2, const arma::mat &timeSqrd);
 
-  double EvaluateWithGradient(
-      const arma::mat &theta_unrestrict, arma::mat &gradient);
+  double EvaluateWithGradient(const arma::mat &theta_unrestrict,
+                              arma::mat &gradient) override;
 
-  double Evaluate(const arma::mat &theta);
+  double Evaluate(const arma::mat &theta) override;
+};
 
-  double EvaluateProfiled(double rho, const arma::mat& fixed_params);
+class OptInterDiagTime : public IOptInter {
+public:
+  OptInterDiagTime(const arma::mat &dataRegion1, const arma::mat &dataRegion2,
+                   const arma::vec &stage1ParamsRegion1,
+                   const arma::vec &stage1ParamsRegion2,
+                   const arma::mat &spatialKernelRegion1,
+                   const arma::mat &spatialKernelRegion2,
+                   const arma::mat &timeSqrd);
+
+  double EvaluateWithGradient(const arma::mat &theta_unrestrict,
+                              arma::mat &gradient) override;
+
+  double Evaluate(const arma::mat &theta) override;
 };
 
 #endif

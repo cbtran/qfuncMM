@@ -1,29 +1,26 @@
 #include "OptInter.h"
 #include "helper.h"
-#include "rbf.h"
 #include <math.h>
 
 /*****************************************************************************
  Inter-regional model
 *****************************************************************************/
 
-OptInter::OptInter(const arma::mat &dataRegion1, const arma::mat &dataRegion2,
-                   const arma::vec &stage1ParamsRegion1,
-                   const arma::vec &stage1ParamsRegion2,
-                   const arma::mat &spaceTimeKernelRegion1,
-                   const arma::mat &spaceTimeKernelRegion2,
-                   const arma::mat &timeSqrd)
+OptInterDiagTime::OptInterDiagTime(const arma::mat &dataRegion1,
+                                   const arma::mat &dataRegion2,
+                                   const arma::vec &stage1ParamsRegion1,
+                                   const arma::vec &stage1ParamsRegion2,
+                                   const arma::mat &spaceTimeKernelRegion1,
+                                   const arma::mat &spaceTimeKernelRegion2,
+                                   const arma::mat &timeSqrd)
     : IOptInter(dataRegion1, dataRegion2, stage1ParamsRegion1,
                 stage1ParamsRegion2, spaceTimeKernelRegion1,
                 spaceTimeKernelRegion2, timeSqrd) {}
 
 // Compute both objective function and its gradient
-double OptInter::EvaluateWithGradient(const arma::mat &theta_unrestrict,
-                                      arma::mat &gradient) {
-  using arma::join_horiz;
-  using arma::join_vert;
-  using arma::mat;
-  using arma::vec;
+double OptInterDiagTime::EvaluateWithGradient(const arma::mat &theta_unrestrict,
+                                              arma::mat &gradient) {
+  using namespace arma;
 
   // theta parameter list:
   // rho, kEta1, kEta2, tauEta, nugget
@@ -31,17 +28,15 @@ double OptInter::EvaluateWithGradient(const arma::mat &theta_unrestrict,
   double rho = sigmoid_inv(theta_unrestrict(0), -1, 1);
   double kEta1 = softplus(theta_unrestrict(1));
   double kEta2 = softplus(theta_unrestrict(2));
-  double tauEta = softplus(theta_unrestrict(3));
-  double nuggetEta = softplus(theta_unrestrict(4));
-  // Rcpp::Rcout << "Params: " << rho << " " << kEta1 << " " << kEta2 << " " <<
-  // tauEta << " " << nuggetEta << std::endl;
+  // double tauEta = softplus(theta_unrestrict(3));
+  // double nuggetEta = softplus(theta_unrestrict(4));
 
   int M_L1 = numTimePt_ * numVoxelRegion1_;
   int M_L2 = numTimePt_ * numVoxelRegion2_;
 
   // A Matrix
-  mat At = rbf(timeSqrd_, tauEta);
-  At.diag() += nuggetEta;
+  // mat At = rbf(timeSqrd_, tauEta);
+  mat At = eye(numTimePt_, numTimePt_);
 
   mat M_12 = arma::repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At,
                           numVoxelRegion1_, numVoxelRegion2_);
@@ -101,44 +96,19 @@ double OptInter::EvaluateWithGradient(const arma::mat &theta_unrestrict,
   mat dVdrho = join_vert(join_horiz(zeroML1, commonRhoDiag),
                          join_horiz(commonRhoDiag.t(), zeroML2));
 
-  mat dAt_dtau_eta = rbf_deriv(timeSqrd_, tauEta);
-  mat cross = arma::repmat(dAt_dtau_eta, numVoxelRegion1_, numVoxelRegion2_) *
-              sqrt(kEta1 * kEta2) * rho;
-  mat dVdtauEta = join_vert(
-      join_horiz(
-          arma::repmat(dAt_dtau_eta, numVoxelRegion1_, numVoxelRegion1_) *
-              kEta1,
-          cross),
-      join_horiz(cross.t(), arma::repmat(dAt_dtau_eta, numVoxelRegion2_,
-                                         numVoxelRegion2_) *
-                                kEta2));
-
-  mat dAt_dnugget = arma::eye(numTimePt_, numTimePt_);
-  cross = arma::repmat(dAt_dnugget, numVoxelRegion1_, numVoxelRegion2_) *
-          sqrt(kEta1 * kEta2) * rho;
-  mat dVdnugget = join_vert(
-      join_horiz(arma::repmat(dAt_dnugget, numVoxelRegion1_, numVoxelRegion1_) *
-                     kEta1,
-                 cross),
-      join_horiz(cross.t(),
-                 arma::repmat(dAt_dnugget, numVoxelRegion2_, numVoxelRegion2_) *
-                     kEta2));
-
   double rho_deriv = sigmoid_inv_derivative(rho, -1, 1);
 
   H -= HX * HX.t();
   gradient(0) = rho_deriv * trace(dVdrho * H);
   gradient(1) = logistic(kEta1) * trace(dVdkEta1 * H);
   gradient(2) = logistic(kEta2) * trace(dVdkEta2 * H);
-  gradient(3) = logistic(tauEta) * trace(dVdtauEta * H);
-  gradient(4) = logistic(nuggetEta) * trace(dVdnugget * H);
-
-  // Rcpp::Rcout << "NegLL: " << std::setprecision(10) << negLL << std::endl;
+  // gradient(3) = logistic(tauEta) * trace(dVdtauEta * H);
+  // gradient(4) = logistic(nuggetEta) * trace(dVdnugget * H);
 
   return negLL;
 }
 
-double OptInter::Evaluate(const arma::mat &theta_unrestrict) {
+double OptInterDiagTime::Evaluate(const arma::mat &theta_unrestrict) {
   using arma::join_horiz;
   using arma::join_vert;
   using arma::mat;
@@ -150,12 +120,11 @@ double OptInter::Evaluate(const arma::mat &theta_unrestrict) {
   double rho = sigmoid_inv(theta_unrestrict(0), -1, 1);
   double kEta1 = softplus(theta_unrestrict(1));
   double kEta2 = softplus(theta_unrestrict(2));
-  double tauEta = softplus(theta_unrestrict(3));
-  double nuggetEta = softplus(theta_unrestrict(4));
+  // double tauEta = softplus(theta_unrestrict(3));
+  // double nuggetEta = softplus(theta_unrestrict(4));
 
   // A Matrix
-  mat At = rbf(timeSqrd_, tauEta);
-  At.diag() += nuggetEta;
+  mat At = arma::eye(numTimePt_, numTimePt_);
 
   mat M_12 = arma::repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At,
                           numVoxelRegion1_, numVoxelRegion2_);

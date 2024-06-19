@@ -4,6 +4,7 @@
 #' @param voxel_coords List specifying voxels for each region. Each item
 #'   in the list is a \eqn{L_j \times 3} matrix of spatial coordinates.
 #' @param kernel_type Choice of spatial kernel. Default "matern_5_2".
+#' @param diag_time Should the temporal covariance matrix be diagonal?
 #' @param verbose Print progress messages.
 #'
 #' @useDynLib qfuncMM
@@ -11,7 +12,7 @@
 #' @importFrom stats cor
 #' @export
 qfuncMM <- function(region_list, voxel_coords,
-                    kernel_type = "matern_5_2", verbose = TRUE) {
+                    kernel_type = "matern_5_2", diag_time = FALSE, verbose = TRUE) {
   kernel_type_id <- kernel_dict(kernel_type)
 
   # TODO: split validation into a separate function
@@ -79,7 +80,8 @@ qfuncMM <- function(region_list, voxel_coords,
       region_list_std[[regid]],
       voxel_coords[[regid]],
       kernel_type_id,
-      time_sqrd_mat
+      time_sqrd_mat,
+      diag_time
     )
 
     stage1_regional[regid, ] <- intra$intra_param
@@ -142,7 +144,8 @@ qfuncMM <- function(region_list, voxel_coords,
         stage1_regional[reg1, ],
         stage1_regional[reg2, ],
         eblue_r12,
-        kernel_type_id
+        kernel_type_id,
+        diag_time
       )
       rho[reg1, reg2] <- stage2_result["rho"]
       rho[reg2, reg1] <- stage2_result["rho"]

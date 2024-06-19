@@ -4,7 +4,13 @@
 \alias{qfuncMM}
 \title{Estimate functional connectivity from voxel-level BOLD signals.}
 \usage{
-qfuncMM(region_list, voxel_coords, kernel_type = "matern_5_2", verbose = TRUE)
+qfuncMM(
+  region_list,
+  voxel_coords,
+  kernel_type = "matern_5_2",
+  diag_time = FALSE,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{region_list}{List of \eqn{M\times L_j} region matrices.}
@@ -13,6 +19,8 @@ qfuncMM(region_list, voxel_coords, kernel_type = "matern_5_2", verbose = TRUE)
 in the list is a \eqn{L_j \times 3} matrix of spatial coordinates.}
 
 \item{kernel_type}{Choice of spatial kernel. Default "matern_5_2".}
+
+\item{diag_time}{Should the temporal covariance matrix be diagonal?}
 
 \item{verbose}{Print progress messages.}
 }
