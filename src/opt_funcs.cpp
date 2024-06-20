@@ -186,7 +186,7 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
 
   ens::StoreBestCoordinates<mat> cb;
   optimizer.Optimize(*opt_inter, theta_vec, ens::GradClipByNorm(100),
-                     StatusCallback(diag_time), cb);
+                     StatusCallback(diag_time), ens::Report(1), cb);
 
   Rcpp::Rcout << "NegLL Final: " << std::setprecision(10) << cb.BestObjective()
               << std::endl;
