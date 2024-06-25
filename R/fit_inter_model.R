@@ -26,10 +26,16 @@ fit_inter_model <- function(
   softminus <- function(x) {
     log(exp(x) - 1)
   }
+
+  logit <- function(x, lower, upper) {
+    x <- (x - lower) / (upper - lower)
+    return(log(x) - log(1 - x))
+  }
+
   # Use the EBLUE as a reasonable initialization.
-  init <- c(rho_eblue, softminus(1), softminus(1), 0, softminus(0.1))
+  init <- c(logit(rho_eblue, -1, 1), softminus(1), softminus(1), 0, softminus(0.1))
   if (diag_time) {
-    init <- c(rho_eblue, softminus(1), softminus(1))
+    init <- c(logit(rho_eblue, -1, 1), softminus(1), softminus(1))
   }
 
   result <- opt_inter(
