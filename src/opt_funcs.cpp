@@ -52,13 +52,14 @@ Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
   optimizer.MinGradientNorm() = 1e-4;
 
   // Run the optimization
-  optimizer.Optimize(*opt_intra, theta);
+  double optval = optimizer.Optimize(*opt_intra, theta, ens::Report(1));
   theta = softplus(theta);
 
   return Rcpp::List::create(Rcpp::Named("theta") = theta,
                             Rcpp::Named("var_noise") =
                                 opt_intra->GetNoiseVarianceEstimate(),
-                            Rcpp::Named("eblue") = opt_intra->GetEBlue());
+                            Rcpp::Named("eblue") = opt_intra->GetEBlue(),
+                            Rcpp::Named("objval") = optval);
 }
 
 // [[Rcpp::export]]

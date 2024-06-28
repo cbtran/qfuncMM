@@ -13,9 +13,10 @@ fit_intra_model <- function(
     voxel_coords,
     kernel_type_id,
     time_sqrd_mat,
-    nugget_only = FALSE) {
+    nugget_only = FALSE,
+    init = c(0, 0, 0, 0)) {
   # Param list: phi, tau_gamma, k_gamma, nugget_gamma
-  param_init <- c(0, 0, 0, 0)
+  param_init <- init
   if (nugget_only) {
     param_init <- c(0, 0)
   }
@@ -30,5 +31,5 @@ fit_intra_model <- function(
     intra_param <- c(intra_param[1], 1, 0, intra_param[2], intra$var_noise)
   }
   names(intra_param) <- c("phi", "tau_gamma", "k_gamma", "nugget_gamma", "var_noise")
-  list(intra_param = intra_param, eblue = intra$eblue)
+  list(intra_param = intra_param, eblue = intra$eblue, objval = intra$objval)
 }

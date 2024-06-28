@@ -12,8 +12,9 @@
 #' @importFrom stats cor
 #' @export
 qfuncMM <- function(region_list, voxel_coords,
-                    kernel_type = "matern_5_2", diag_time = FALSE, verbose = TRUE) {
+                    kernel_type = "matern_5_2", diag_time = 0, verbose = TRUE) {
   kernel_type_id <- kernel_dict(kernel_type)
+  # diag_time: 0 means neither, 1 means stage 1 only, 2 means stage 2 only, 3 means both
 
   # TODO: split validation into a separate function
   if (length(region_list) == 0) {
@@ -81,7 +82,7 @@ qfuncMM <- function(region_list, voxel_coords,
       voxel_coords[[regid]],
       kernel_type_id,
       time_sqrd_mat,
-      diag_time
+      diag_time == 1 || diag_time == 3
     )
 
     stage1_regional[regid, ] <- intra$intra_param
@@ -145,7 +146,7 @@ qfuncMM <- function(region_list, voxel_coords,
         stage1_regional[reg2, ],
         eblue_r12,
         kernel_type_id,
-        diag_time
+        diag_time == 2 || diag_time == 3
       )
       rho[reg1, reg2] <- stage2_result["rho"]
       rho[reg2, reg1] <- stage2_result["rho"]
