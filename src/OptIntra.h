@@ -14,12 +14,14 @@ protected:
   KernelType kernelType_; // Choice of spatial kernel
   double noiseVarianceEstimate_;
   arma::vec eblue_;
+  bool verbose_;
 
 public:
   IOptIntra(const arma::mat &data, const arma::mat &distSqrd,
-            const arma::mat &timeSqrd, KernelType kernelType)
+            const arma::mat &timeSqrd, KernelType kernelType,
+            bool verbose = true)
       : data_(data), distSqrd_(distSqrd), timeSqrd_(timeSqrd),
-        kernelType_(kernelType) {
+        kernelType_(kernelType), verbose_(verbose) {
     numVoxel_ = distSqrd.n_rows;
     numTimePt_ = timeSqrd.n_rows;
   };
@@ -40,7 +42,8 @@ public:
 class OptIntra : public IOptIntra {
 public:
   OptIntra(const arma::mat &data, const arma::mat &distSqrd,
-           const arma::mat &timeSqrd, KernelType kernelType);
+           const arma::mat &timeSqrd, KernelType kernelType,
+           bool verbose = true);
 
   double EvaluateWithGradient(const arma::mat &theta,
                               arma::mat &gradient) override;

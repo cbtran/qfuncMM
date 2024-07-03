@@ -11,8 +11,8 @@
 fit_intra_model <- function(
     region_mx,
     voxel_coords,
-    kernel_type_id,
-    time_sqrd_mat,
+    kernel_type_id = 3L,
+    # time_sqrd_mat,
     nugget_only = FALSE,
     init = c(0, 0, 0, 0)) {
   # Param list: phi, tau_gamma, k_gamma, nugget_gamma
@@ -20,6 +20,9 @@ fit_intra_model <- function(
   if (nugget_only) {
     param_init <- c(0, 0)
   }
+
+  m <- nrow(region_mx)
+  time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
 
   intra <- opt_intra(
     param_init, matrix(region_mx, ncol = 1),

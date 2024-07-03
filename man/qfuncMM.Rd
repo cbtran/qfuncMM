@@ -8,7 +8,7 @@ qfuncMM(
   region_list,
   voxel_coords,
   kernel_type = "matern_5_2",
-  diag_time = FALSE,
+  diag_time = 0,
   verbose = TRUE
 )
 }

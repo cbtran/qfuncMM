@@ -2,6 +2,7 @@
 
 #include "OptInter.h"
 #include "OptIntra.h"
+#include "Rcpp/Rmath.h"
 #include "Rcpp/iostream/Rstreambuf.h"
 #include "Rcpp/vector/instantiation.h"
 #include "ensmallen_bits/callbacks/grad_clip_by_norm.hpp"
@@ -78,7 +79,8 @@ Rcpp::List eval_stage1_nll(const arma::vec &theta, const arma::mat &X_region,
   arma::mat dist_sqrd_mat = squared_distance(voxel_coords);
 
   // Construct the objective function.
-  OptIntra opt_intra(X_region, dist_sqrd_mat, time_sqrd_mat, kernel_type);
+  OptIntra opt_intra(X_region, dist_sqrd_mat, time_sqrd_mat, kernel_type,
+                     false);
 
   arma::mat grad = arma::zeros(4, 1);
   double nll = opt_intra.EvaluateWithGradient(theta_transformed, grad);

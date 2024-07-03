@@ -81,7 +81,7 @@ qfuncMM <- function(region_list, voxel_coords,
       region_list_std[[regid]],
       voxel_coords[[regid]],
       kernel_type_id,
-      time_sqrd_mat,
+      # time_sqrd_mat,
       diag_time == 1 || diag_time == 3
     )
 
