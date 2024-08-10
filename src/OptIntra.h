@@ -37,6 +37,7 @@ public:
     return noiseVarianceEstimate_;
   }
   arma::vec GetEBlue() { return eblue_; }
+  virtual double GetKStar() { throw std::runtime_error("Not implemented"); }
 };
 
 class OptIntra : public IOptIntra {
@@ -67,5 +68,19 @@ public:
   double EvaluateWithGradient(const arma::mat &theta,
                               arma::mat &gradient) override;
 };
+
+class OptIntraNoiselessProfiled : public IOptIntra {
+  double kstar_;
+public:
+  OptIntraNoiselessProfiled(const arma::mat &data, const arma::mat &distSqrd,
+                    const arma::mat &timeSqrd, KernelType kernelType,
+                    bool verbose = true);
+
+  double EvaluateWithGradient(const arma::mat &theta,
+                              arma::mat &gradient) override;
+
+  double GetKStar() override;
+};
+
 
 #endif

@@ -39,6 +39,16 @@ double softplus(double x);
 // @return compute sofplus function log(1 + exp(x)) element-wise
 arma::mat softplus(arma::mat xMat);
 
+// Compute softminus
+// @param x scalar
+// @return compute sofminus function log(exp(x) - 1)
+double softminus(double x);
+
+// Compute softminus
+// @param x scalar or matrix
+// @return compute sofminus function log(exp(x) - 1) element-wise
+arma::mat softminus(arma::mat xMat);
+
 // Compute logistic:
 // @param scalar x
 // @return compute logistic function 1 / (1+exp(-x))

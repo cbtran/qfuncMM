@@ -6,6 +6,7 @@
 #include "Rcpp/exceptions.h"
 #include "Rcpp/iostream/Rstreambuf.h"
 #include "Rcpp/vector/instantiation.h"
+#include "armadillo"
 #include "ensmallen_bits/callbacks/grad_clip_by_norm.hpp"
 #include "ensmallen_bits/callbacks/store_best_coordinates.hpp"
 #include "get_cor_mat.h"
@@ -30,17 +31,28 @@
 Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
                      const arma::mat &voxel_coords,
                      const arma::mat &time_sqrd_mat, int kernel_type_id,
-                     bool nugget_only, bool noiseless) {
+                     bool nugget_only, bool noiseless, bool noiseless_profiled) {
+  using namespace arma;
   // Necessary evil since we can't easily expose enums to R
   KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
 
-  // Update basis coefficents
-  arma::mat theta = theta_init;
+  // phi, tau, k, nugget
+  arma::mat theta_unrestrict = softminus(theta_init);
+  if (noiseless_profiled) {
+    theta_unrestrict = arma::zeros(3);
+    theta_unrestrict(0) = softminus(theta_init(0));
+    theta_unrestrict(1) = softminus(theta_init(1));
+    theta_unrestrict(2) = softminus(theta_init(3) / theta_init(2));
+  }
   arma::mat dist_sqrd_mat = squared_distance(voxel_coords);
 
   // Construct the objective function.
   std::unique_ptr<IOptIntra> opt_intra;
-  if (noiseless)
+  if (noiseless_profiled) {
+    opt_intra = std::make_unique<OptIntraNoiselessProfiled>(
+        X_region, dist_sqrd_mat, time_sqrd_mat, kernel_type);
+  }
+  else if (noiseless)
     opt_intra = std::make_unique<OptIntraNoiseless>(X_region, dist_sqrd_mat,
                                                     time_sqrd_mat, kernel_type);
   else if (nugget_only)
@@ -58,11 +70,19 @@ Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
   // Run the optimization
   double optval;
   try {
-    optval = optimizer.Optimize(*opt_intra, theta, ens::Report(1));
-  } catch (std::runtime_error re) {
+    optval = optimizer.Optimize(*opt_intra, theta_unrestrict, ens::Report(1));
+  } catch (std::runtime_error &re) {
     Rcpp::stop("Optimization failed " + std::string(re.what()));
   }
-  theta = softplus(theta);
+  vec theta = softplus(theta_unrestrict);
+  if (noiseless_profiled) {
+    vec theta_orig = arma::zeros(4);
+    theta_orig(0) = theta(0);
+    theta_orig(1) = theta(1);
+    theta_orig(2) = opt_intra->GetKStar();
+    theta_orig(3) = theta(2) * theta_orig(2);
+    theta = theta_orig;
+  }
 
   return Rcpp::List::create(Rcpp::Named("theta") = theta,
                             Rcpp::Named("var_noise") =

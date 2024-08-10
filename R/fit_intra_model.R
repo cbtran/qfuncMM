@@ -15,11 +15,12 @@ fit_intra_model <- function(
     # time_sqrd_mat,
     nugget_only = FALSE,
     noiseless = FALSE,
-    init = c(0, 0, 0, 0)) {
+    noiseless_profiled = FALSE,
+    init = rep(0.1, 4)) {
   # Param list: phi, tau_gamma, k_gamma, nugget_gamma
   param_init <- init
   if (nugget_only) {
-    param_init <- c(0, 0)
+    param_init <- c(0.1, 0.1)
   }
 
   m <- nrow(region_mx)
@@ -29,7 +30,8 @@ fit_intra_model <- function(
     {
       intra <- opt_intra(
         param_init, matrix(region_mx, ncol = 1),
-        voxel_coords, time_sqrd_mat, kernel_type_id, nugget_only, noiseless
+        voxel_coords, time_sqrd_mat, kernel_type_id,
+        nugget_only, noiseless, noiseless_profiled
       )
     },
     error = function(e) {

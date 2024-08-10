@@ -63,6 +63,12 @@ arma::mat softplus(arma::mat xMat) {
   return xMat.transform([](double x){return softplus(x);});
 }
 
+double softminus(double x) { return log(exp(x) - 1); }
+
+arma::mat softminus(arma::mat xMat) {
+  return xMat.transform([](double x){return softminus(x);});
+}
+
 double logistic(double x) {
   return exp(-log1pexp(-x));
 }
