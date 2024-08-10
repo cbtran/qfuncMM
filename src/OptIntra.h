@@ -58,4 +58,14 @@ public:
                               arma::mat &gradient) override;
 };
 
+class OptIntraNoiseless : public IOptIntra {
+public:
+  OptIntraNoiseless(const arma::mat &data, const arma::mat &distSqrd,
+                    const arma::mat &timeSqrd, KernelType kernelType,
+                    bool verbose = true);
+
+  double EvaluateWithGradient(const arma::mat &theta,
+                              arma::mat &gradient) override;
+};
+
 #endif

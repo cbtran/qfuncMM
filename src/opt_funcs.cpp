@@ -1,8 +1,9 @@
 #include <RcppEnsmallen.h>
+#include <stdexcept>
 
 #include "OptInter.h"
 #include "OptIntra.h"
-#include "Rcpp/Rmath.h"
+#include "Rcpp/exceptions.h"
 #include "Rcpp/iostream/Rstreambuf.h"
 #include "Rcpp/vector/instantiation.h"
 #include "ensmallen_bits/callbacks/grad_clip_by_norm.hpp"
@@ -29,7 +30,7 @@
 Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
                      const arma::mat &voxel_coords,
                      const arma::mat &time_sqrd_mat, int kernel_type_id,
-                     bool nugget_only) {
+                     bool nugget_only, bool noiseless) {
   // Necessary evil since we can't easily expose enums to R
   KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
 
@@ -39,7 +40,10 @@ Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
 
   // Construct the objective function.
   std::unique_ptr<IOptIntra> opt_intra;
-  if (nugget_only)
+  if (noiseless)
+    opt_intra = std::make_unique<OptIntraNoiseless>(X_region, dist_sqrd_mat,
+                                                    time_sqrd_mat, kernel_type);
+  else if (nugget_only)
     opt_intra = std::make_unique<OptIntraDiagTime>(X_region, dist_sqrd_mat,
                                                    time_sqrd_mat, kernel_type);
   else
@@ -49,11 +53,15 @@ Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
   // Create the L_BFGS optimizer with default parameters.
   ens::L_BFGS optimizer(20);
   optimizer.MaxIterations() = 100;
-  optimizer.MaxLineSearchTrials() = 10;
-  optimizer.MinGradientNorm() = 1e-4;
+  optimizer.MaxStep() = 10;
 
   // Run the optimization
-  double optval = optimizer.Optimize(*opt_intra, theta, ens::Report(1));
+  double optval;
+  try {
+    optval = optimizer.Optimize(*opt_intra, theta, ens::Report(1));
+  } catch (std::runtime_error re) {
+    Rcpp::stop("Optimization failed " + std::string(re.what()));
+  }
   theta = softplus(theta);
 
   return Rcpp::List::create(Rcpp::Named("theta") = theta,

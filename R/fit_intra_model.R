@@ -14,6 +14,7 @@ fit_intra_model <- function(
     kernel_type_id = 3L,
     # time_sqrd_mat,
     nugget_only = FALSE,
+    noiseless = FALSE,
     init = c(0, 0, 0, 0)) {
   # Param list: phi, tau_gamma, k_gamma, nugget_gamma
   param_init <- init
@@ -24,9 +25,17 @@ fit_intra_model <- function(
   m <- nrow(region_mx)
   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
 
-  intra <- opt_intra(
-    param_init, matrix(region_mx, ncol = 1),
-    voxel_coords, time_sqrd_mat, kernel_type_id, nugget_only
+  intra <- tryCatch(
+    {
+      intra <- opt_intra(
+        param_init, matrix(region_mx, ncol = 1),
+        voxel_coords, time_sqrd_mat, kernel_type_id, nugget_only, noiseless
+      )
+    },
+    error = function(e) {
+      warning(e)
+      list(theta = rep(NA, 4), var_noise = NA, eblue = rep(NA, m), objval = NA)
+    }
   )
 
   intra_param <- c(intra$theta, intra$var_noise)

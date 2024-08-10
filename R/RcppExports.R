@@ -34,8 +34,8 @@ NULL
 #'   theta: Estimated intra-regional parameters
 #'   var_noise: Estimated noise variance
 #' @noRd
-opt_intra <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, nugget_only) {
-    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, nugget_only)
+opt_intra <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, nugget_only, noiseless) {
+    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, nugget_only, noiseless)
 }
 
 eval_stage1_nll <- function(theta, X_region, voxel_coords, time_sqrd_mat, kernel_type_id) {
