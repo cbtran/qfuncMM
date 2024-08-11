@@ -31,19 +31,15 @@
 Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
                      const arma::mat &voxel_coords,
                      const arma::mat &time_sqrd_mat, int kernel_type_id,
-                     bool nugget_only, bool noiseless, bool noiseless_profiled) {
+                     bool nugget_only, bool noiseless,
+                     bool noiseless_profiled) {
   using namespace arma;
   // Necessary evil since we can't easily expose enums to R
   KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
 
   // phi, tau, k, nugget
+  // or phi, tau, nugget_over_k if profiled
   arma::mat theta_unrestrict = softminus(theta_init);
-  if (noiseless_profiled) {
-    theta_unrestrict = arma::zeros(3);
-    theta_unrestrict(0) = softminus(theta_init(0));
-    theta_unrestrict(1) = softminus(theta_init(1));
-    theta_unrestrict(2) = softminus(theta_init(3) / theta_init(2));
-  }
   arma::mat dist_sqrd_mat = squared_distance(voxel_coords);
 
   // Construct the objective function.
@@ -51,8 +47,7 @@ Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
   if (noiseless_profiled) {
     opt_intra = std::make_unique<OptIntraNoiselessProfiled>(
         X_region, dist_sqrd_mat, time_sqrd_mat, kernel_type);
-  }
-  else if (noiseless)
+  } else if (noiseless)
     opt_intra = std::make_unique<OptIntraNoiseless>(X_region, dist_sqrd_mat,
                                                     time_sqrd_mat, kernel_type);
   else if (nugget_only)
@@ -65,7 +60,7 @@ Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
   // Create the L_BFGS optimizer with default parameters.
   ens::L_BFGS optimizer(20);
   optimizer.MaxIterations() = 100;
-  optimizer.MaxStep() = 10;
+  // optimizer.MaxStep() = 10;
 
   // Run the optimization
   double optval;

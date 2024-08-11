@@ -16,34 +16,49 @@ fit_intra_model <- function(
     nugget_only = FALSE,
     noiseless = FALSE,
     noiseless_profiled = FALSE,
-    init = rep(0.1, 4)) {
+    init = NULL) {
   # Param list: phi, tau_gamma, k_gamma, nugget_gamma
-  param_init <- init
-  if (nugget_only) {
-    param_init <- c(0.1, 0.1)
-  }
+  # param_init <- init
+  # if (nugget_only) {
+  #   param_init <- c(0.1, 0.1)
+  # }
 
   m <- nrow(region_mx)
   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
-
-  intra <- tryCatch(
-    {
-      intra <- opt_intra(
-        param_init, matrix(region_mx, ncol = 1),
-        voxel_coords, time_sqrd_mat, kernel_type_id,
-        nugget_only, noiseless, noiseless_profiled
-      )
-    },
-    error = function(e) {
-      warning(e)
-      list(theta = rep(NA, 4), var_noise = NA, eblue = rep(NA, m), objval = NA)
-    }
-  )
-
-  intra_param <- c(intra$theta, intra$var_noise)
-  if (nugget_only) {
-    intra_param <- c(intra_param[1], 1, 0, intra_param[2], intra$var_noise)
+  inits <- NULL
+  if (is.null(init)) {
+    inits <- stage1_init(region_mx, voxel_coords, noiseless_profiled)
+  } else {
+    inits <- matrix(init, nrow = 1)
   }
+  n_init <- nrow(inits)
+
+  best_intra <- NULL
+  best_obj <- Inf
+  for (init_num in seq_len(n_init)) {
+    intra <- tryCatch(
+      {
+        intra <- opt_intra(
+          inits[init_num, ], matrix(region_mx, ncol = 1),
+          voxel_coords, time_sqrd_mat, kernel_type_id,
+          nugget_only, noiseless, noiseless_profiled
+        )
+      },
+      error = function(e) {
+        warning(e)
+        list(theta = rep(NA, 4), var_noise = NA, eblue = rep(NA, m), objval = Inf)
+      }
+    )
+    if (intra$objval < best_obj) {
+      best_obj <- intra$objval
+      best_intra <- intra
+    }
+  }
+
+  intra_param <- c(best_intra$theta, best_intra$var_noise)
+  # if (nugget_only) {
+  #   intra_param <- c(intra_param[1], 1, 0, intra_param[2], best_intra$var_noise)
+  # }
   names(intra_param) <- c("phi", "tau_gamma", "k_gamma", "nugget_gamma", "var_noise")
   list(intra_param = intra_param, eblue = intra$eblue, objval = intra$objval)
 }

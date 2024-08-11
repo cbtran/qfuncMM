@@ -8,15 +8,16 @@
 *****************************************************************************/
 
 OptIntraNoiselessProfiled::OptIntraNoiselessProfiled(const arma::mat &data,
-                                     const arma::mat &distSqrd,
-                                     const arma::mat &timeSqrd,
-                                     KernelType kernelType, bool verbose)
+                                                     const arma::mat &distSqrd,
+                                                     const arma::mat &timeSqrd,
+                                                     KernelType kernelType,
+                                                     bool verbose)
     : IOptIntra(data, distSqrd, timeSqrd, kernelType, verbose) {
   noiseVarianceEstimate_ = 1;
 }
 
 double OptIntraNoiselessProfiled::EvaluateWithGradient(const arma::mat &theta,
-                                               arma::mat &gradient) {
+                                                       arma::mat &gradient) {
   using namespace arma;
 
   double phi = softplus(theta(0));
@@ -24,11 +25,10 @@ double OptIntraNoiselessProfiled::EvaluateWithGradient(const arma::mat &theta,
   double nugget_over_k = softplus(theta(2));
   // double k = softplus(theta(2));
   // double nugget = softplus(theta(3));
-  //   if (verbose_) {
-  //     Rcpp::Rcout << "==Theta: " << phi << " " << tau << " " << k << " " <<
-  //     nugget
-  //                 << std::endl;
-  //   }
+  if (verbose_) {
+    Rcpp::Rcout << "==Theta: " << phi << " " << tau << " " << nugget_over_k
+                << std::endl;
+  }
   mat timeIdentity = arma::eye(numTimePt_, numTimePt_);
   mat U = arma::repmat(timeIdentity, numVoxel_, 1);
 
@@ -69,7 +69,6 @@ double OptIntraNoiselessProfiled::EvaluateWithGradient(const arma::mat &theta,
   if (std::isnan(logremlval)) {
     throw std::runtime_error("logremlval is nan");
   }
-
 
   // Gradients
   kstar_ = qdr / ((numVoxel_ - 1) * numTimePt_);
@@ -133,44 +132,39 @@ double OptIntraNoiselessProfiled::EvaluateWithGradient(const arma::mat &theta,
   // mat dataTemporalVar2 =
   //     2 * vInvCentered.t() * U *
   //     (-Gt * kronecker_mvm(C, dBdk, vInvCentered));
-  // double dataTemporalVarNum = dataTemporalVar1(0, 0) + dataTemporalVar2(0, 0);
+  // double dataTemporalVarNum = dataTemporalVar1(0, 0) + dataTemporalVar2(0,
+  // 0);
 
-  double data_nugget_over_k1 =
-    as_scalar(
-        vInvCentered.t() *
-        kronecker_mvm(C, timeIdentity, vInvCentered)
-    );
+  double data_nugget_over_k1 = as_scalar(
+      vInvCentered.t() * kronecker_mvm(C, timeIdentity, vInvCentered));
   double data_nugget_over_k2 =
-    as_scalar(
-      2 * vInvCentered.t() * U *
-      (-Gt * kronecker_mvm(C, timeIdentity, vInvCentered))
-    );
+      as_scalar(2 * vInvCentered.t() * U *
+                (-Gt * kronecker_mvm(C, timeIdentity, vInvCentered)));
   double qdr_nugget_over_k = data_nugget_over_k1 + data_nugget_over_k2;
 
   double data_tau1 =
       as_scalar(vInvCentered.t() * kronecker_mvm(C, dBdtau, vInvCentered));
-  double data_tau2 =
-      as_scalar(2 * vInvCentered.t() * U *
-      (-Gt * kronecker_mvm(C, dBdtau, vInvCentered)));
+  double data_tau2 = as_scalar(2 * vInvCentered.t() * U *
+                               (-Gt * kronecker_mvm(C, dBdtau, vInvCentered)));
   double qdr_tau = data_tau1 + data_tau2;
 
-  double data_phi1 = as_scalar(
-      vInvCentered.t() * kronecker_mvm(dCdphi, B, vInvCentered));
-  double data_phi2 =
-      as_scalar(2 * vInvCentered.t() * U *
-                (-Gt * kronecker_mvm(dCdphi, B, vInvCentered)));
+  double data_phi1 =
+      as_scalar(vInvCentered.t() * kronecker_mvm(dCdphi, B, vInvCentered));
+  double data_phi2 = as_scalar(2 * vInvCentered.t() * U *
+                               (-Gt * kronecker_mvm(dCdphi, B, vInvCentered)));
   double qdr_phi = data_phi1 + data_phi2;
 
-  gradient(0) = 0.5 * (trace_dVdphi - trace2phi - qdr_phi) * logistic(phi) / kstar_;
-  gradient(1) = 0.5 * (trace_dVdtau - trace2tau - qdr_tau) * logistic(tau) / kstar_;
+  gradient(0) =
+      0.5 * (trace_dVdphi - trace2phi - qdr_phi) * logistic(phi) / kstar_;
+  gradient(1) =
+      0.5 * (trace_dVdtau - trace2tau - qdr_tau) * logistic(tau) / kstar_;
   // gradient(2) =
-  //     0.5 * (trace_dVdk - trace2VarTemporal - dataTemporalVarNum) * logistic(k);
-  gradient(2) = 0.5 *
-      (trace_dVdnugget_over_k - trace2nugget_over_k - qdr_nugget_over_k) *
+  //     0.5 * (trace_dVdk - trace2VarTemporal - dataTemporalVarNum) *
+  //     logistic(k);
+  gradient(2) =
+      0.5 * (trace_dVdnugget_over_k - trace2nugget_over_k - qdr_nugget_over_k) *
       logistic(nugget_over_k) / kstar_;
   return logremlval;
 }
 
-double OptIntraNoiselessProfiled::GetKStar() {
-  return kstar_;
-};
+double OptIntraNoiselessProfiled::GetKStar() { return kstar_; };
