@@ -21,7 +21,7 @@ fit_inter_model <- function(
     region1_stage1,
     region2_stage1,
     rho_eblue,
-    kernel_type_id, diag_time = FALSE) {
+    kernel_type_id, noiseless, diag_time = FALSE) {
   # Parameter list: rho, kEta1, kEta2, tauEta, nugget
   softminus <- function(x) {
     log(exp(x) - 1)
@@ -48,7 +48,8 @@ fit_inter_model <- function(
     stage1ParamsRegion1 = region1_stage1,
     stage1ParamsRegion2 = region2_stage1,
     kernel_type_id = kernel_type_id,
-    diag_time = diag_time
+    diag_time = diag_time,
+    noiseless = noiseless
   )
 
   params <- result$theta

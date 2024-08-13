@@ -46,8 +46,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // opt_inter
-Rcpp::List opt_inter(const arma::vec& theta_init, const arma::mat& dataRegion1, const arma::mat& dataRegion2, const arma::mat& voxel_coords_1, const arma::mat& voxel_coords_2, const arma::mat& time_sqrd_mat, const arma::vec& stage1ParamsRegion1, const arma::vec& stage1ParamsRegion2, int kernel_type_id, bool diag_time);
-RcppExport SEXP _qfuncMM_opt_inter(SEXP theta_initSEXP, SEXP dataRegion1SEXP, SEXP dataRegion2SEXP, SEXP voxel_coords_1SEXP, SEXP voxel_coords_2SEXP, SEXP time_sqrd_matSEXP, SEXP stage1ParamsRegion1SEXP, SEXP stage1ParamsRegion2SEXP, SEXP kernel_type_idSEXP, SEXP diag_timeSEXP) {
+Rcpp::List opt_inter(const arma::vec& theta_init, const arma::mat& dataRegion1, const arma::mat& dataRegion2, const arma::mat& voxel_coords_1, const arma::mat& voxel_coords_2, const arma::mat& time_sqrd_mat, const arma::vec& stage1ParamsRegion1, const arma::vec& stage1ParamsRegion2, int kernel_type_id, bool diag_time, bool noiseless);
+RcppExport SEXP _qfuncMM_opt_inter(SEXP theta_initSEXP, SEXP dataRegion1SEXP, SEXP dataRegion2SEXP, SEXP voxel_coords_1SEXP, SEXP voxel_coords_2SEXP, SEXP time_sqrd_matSEXP, SEXP stage1ParamsRegion1SEXP, SEXP stage1ParamsRegion2SEXP, SEXP kernel_type_idSEXP, SEXP diag_timeSEXP, SEXP noiselessSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -61,7 +61,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::vec& >::type stage1ParamsRegion2(stage1ParamsRegion2SEXP);
     Rcpp::traits::input_parameter< int >::type kernel_type_id(kernel_type_idSEXP);
     Rcpp::traits::input_parameter< bool >::type diag_time(diag_timeSEXP);
-    rcpp_result_gen = Rcpp::wrap(opt_inter(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id, diag_time));
+    Rcpp::traits::input_parameter< bool >::type noiseless(noiselessSEXP);
+    rcpp_result_gen = Rcpp::wrap(opt_inter(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id, diag_time, noiseless));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -69,7 +70,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_qfuncMM_opt_intra", (DL_FUNC) &_qfuncMM_opt_intra, 8},
     {"_qfuncMM_eval_stage1_nll", (DL_FUNC) &_qfuncMM_eval_stage1_nll, 5},
-    {"_qfuncMM_opt_inter", (DL_FUNC) &_qfuncMM_opt_inter, 10},
+    {"_qfuncMM_opt_inter", (DL_FUNC) &_qfuncMM_opt_inter, 11},
     {NULL, NULL, 0}
 };
 

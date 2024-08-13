@@ -12,10 +12,12 @@ OptInter::OptInter(const arma::mat &dataRegion1, const arma::mat &dataRegion2,
                    const arma::vec &stage1ParamsRegion2,
                    const arma::mat &spaceTimeKernelRegion1,
                    const arma::mat &spaceTimeKernelRegion2,
-                   const arma::mat &timeSqrd)
+                   const arma::mat &timeSqrd, bool noiseless)
     : IOptInter(dataRegion1, dataRegion2, stage1ParamsRegion1,
                 stage1ParamsRegion2, spaceTimeKernelRegion1,
-                spaceTimeKernelRegion2, timeSqrd) {}
+                spaceTimeKernelRegion2, timeSqrd) {
+  noiseless_ = noiseless;
+}
 
 // Compute both objective function and its gradient
 double OptInter::EvaluateWithGradient(const arma::mat &theta_unrestrict,
@@ -46,14 +48,17 @@ double OptInter::EvaluateWithGradient(const arma::mat &theta_unrestrict,
   mat M_12 = arma::repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At,
                           numVoxelRegion1_, numVoxelRegion2_);
 
-  mat M_11 =
-      spaceTimeKernelRegion1_ +
-      kEta1 * arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_) +
-      arma::eye(numVoxelRegion1_ * numTimePt_, numVoxelRegion1_ * numTimePt_);
-  mat M_22 =
-      spaceTimeKernelRegion2_ +
-      kEta2 * arma::repmat(At, numVoxelRegion2_, numVoxelRegion2_) +
-      arma::eye(numVoxelRegion2_ * numTimePt_, numVoxelRegion2_ * numTimePt_);
+  mat M_11 = spaceTimeKernelRegion1_ +
+             kEta1 * arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_);
+  mat M_22 = spaceTimeKernelRegion2_ +
+             kEta2 * arma::repmat(At, numVoxelRegion2_, numVoxelRegion2_);
+
+  if (!noiseless_) {
+    M_11 +=
+        arma::eye(numVoxelRegion1_ * numTimePt_, numVoxelRegion1_ * numTimePt_);
+    M_22 +=
+        arma::eye(numVoxelRegion2_ * numTimePt_, numVoxelRegion2_ * numTimePt_);
+  }
 
   mat V = join_vert(join_horiz(M_11, M_12), join_horiz(M_12.t(), M_22));
 

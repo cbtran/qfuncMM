@@ -48,12 +48,15 @@ public:
 };
 
 class OptInter : public IOptInter {
+  bool noiseless_;
+
 public:
   OptInter(const arma::mat &dataRegion1, const arma::mat &dataRegion2,
            const arma::vec &stage1ParamsRegion1,
            const arma::vec &stage1ParamsRegion2,
            const arma::mat &spatialKernelRegion1,
-           const arma::mat &spatialKernelRegion2, const arma::mat &timeSqrd);
+           const arma::mat &spatialKernelRegion2, const arma::mat &timeSqrd,
+           bool noiseless);
 
   double EvaluateWithGradient(const arma::mat &theta_unrestrict,
                               arma::mat &gradient) override;

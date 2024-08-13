@@ -5,6 +5,7 @@
 #'   in the list is a \eqn{L_j \times 3} matrix of spatial coordinates.
 #' @param kernel_type Choice of spatial kernel. Default "matern_5_2".
 #' @param diag_time Should the temporal covariance matrix be diagonal?
+#' @param noiseless Should the model be fit without an overall noise term?
 #' @param verbose Print progress messages.
 #'
 #' @useDynLib qfuncMM
@@ -12,7 +13,8 @@
 #' @importFrom stats cor
 #' @export
 qfuncMM <- function(region_list, voxel_coords,
-                    kernel_type = "matern_5_2", diag_time = 0, verbose = TRUE) {
+                    kernel_type = "matern_5_2", diag_time = 0,
+                    noiseless = TRUE, verbose = TRUE) {
   kernel_type_id <- kernel_dict(kernel_type)
   # diag_time: 0 means neither, 1 means stage 1 only, 2 means stage 2 only, 3 means both
 
@@ -82,7 +84,7 @@ qfuncMM <- function(region_list, voxel_coords,
       voxel_coords[[regid]],
       kernel_type_id,
       # time_sqrd_mat,
-      noiseless = TRUE
+      noiseless = noiseless
     )
 
     stage1_regional[regid, ] <- intra$intra_param
@@ -146,7 +148,8 @@ qfuncMM <- function(region_list, voxel_coords,
         stage1_regional[reg2, ],
         eblue_r12,
         kernel_type_id,
-        diag_time == 2 || diag_time == 3
+        diag_time == 2 || diag_time == 3,
+        noiseless = noiseless
       )
       rho[reg1, reg2] <- stage2_result["rho"]
       rho[reg2, reg1] <- stage2_result["rho"]

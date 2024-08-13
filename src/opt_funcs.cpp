@@ -163,7 +163,7 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
                      const arma::mat &time_sqrd_mat,
                      const arma::vec &stage1ParamsRegion1,
                      const arma::vec &stage1ParamsRegion2, int kernel_type_id,
-                     bool diag_time) {
+                     bool diag_time, bool noiseless) {
   using arma::mat;
   using arma::vec;
 
@@ -202,7 +202,7 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
   } else {
     opt_inter = std::make_unique<OptInter>(
         dataRegion1, dataRegion2, stage1ParamsRegion1, stage1ParamsRegion2,
-        block_region_1, block_region_2, time_sqrd_mat);
+        block_region_1, block_region_2, time_sqrd_mat, noiseless);
   }
 
   ens::L_BFGS optimizer(10);
