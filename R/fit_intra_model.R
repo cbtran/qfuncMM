@@ -4,6 +4,7 @@
 #' @param voxel_coords coordinates of voxels in the region
 #' @param time_sqrd_mat Temporal squared distance matrix
 #' @param kernel_type_id Choice of spatial kernel. Default "matern_5_2".
+#' @param num_init Number of initializations to try
 #' @return Esimated intra parameters and noise variance
 #'
 #' @noRd
@@ -16,6 +17,7 @@ fit_intra_model <- function(
     nugget_only = FALSE,
     noiseless = FALSE,
     noiseless_profiled = FALSE,
+    num_init = 1L,
     init = NULL) {
   # Param list: phi, tau_gamma, k_gamma, nugget_gamma
   # param_init <- init
@@ -27,7 +29,7 @@ fit_intra_model <- function(
   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
   inits <- NULL
   if (is.null(init)) {
-    inits <- stage1_init(region_mx, voxel_coords, noiseless_profiled)
+    inits <- stage1_init(region_mx, voxel_coords, num_init, noiseless_profiled)
   } else {
     inits <- matrix(init, nrow = 1)
   }
@@ -35,6 +37,8 @@ fit_intra_model <- function(
 
   best_intra <- NULL
   best_obj <- Inf
+  results_by_init <- matrix(nrow = n_init, ncol = 5)
+  colnames(results_by_init) <- c("phi", "tau_gamma", "k_gamma", "nugget_gamma", "nll")
   for (init_num in seq_len(n_init)) {
     intra <- tryCatch(
       {
@@ -49,6 +53,7 @@ fit_intra_model <- function(
         list(theta = rep(NA, 4), var_noise = NA, eblue = rep(NA, m), objval = Inf)
       }
     )
+    results_by_init[init_num, ] <- c(intra$theta, intra$objval)
     if (intra$objval < best_obj) {
       best_obj <- intra$objval
       best_intra <- intra
@@ -60,5 +65,8 @@ fit_intra_model <- function(
   #   intra_param <- c(intra_param[1], 1, 0, intra_param[2], best_intra$var_noise)
   # }
   names(intra_param) <- c("phi", "tau_gamma", "k_gamma", "nugget_gamma", "var_noise")
-  list(intra_param = intra_param, eblue = intra$eblue, objval = intra$objval)
+  list(
+    intra_param = intra_param, eblue = intra$eblue, objval = intra$objval,
+    initializations = inits, results_by_init = results_by_init
+  )
 }

@@ -84,7 +84,8 @@ qfuncMM <- function(region_list, voxel_coords,
       voxel_coords[[regid]],
       kernel_type_id,
       # time_sqrd_mat,
-      noiseless = noiseless
+      noiseless = noiseless,
+      num_init = 10
     )
 
     stage1_regional[regid, ] <- intra$intra_param
