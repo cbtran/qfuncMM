@@ -30,12 +30,10 @@ NULL
 #' @param voxel_coords L x 3 matrix of voxel coordinates
 #' @param time_sqrd_mat M x M temporal squared distance matrix
 #' @param kernel_type_id Choice of spatial kernel
-#' @return List of 2 components:
-#'   theta: Estimated intra-regional parameters
-#'   var_noise: Estimated noise variance
+#' @param setting Choice of covariance structure
 #' @noRd
-opt_intra <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, nugget_only, noiseless, noiseless_profiled) {
-    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, nugget_only, noiseless, noiseless_profiled)
+opt_intra <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, setting) {
+    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, setting)
 }
 
 eval_stage1_nll <- function(theta, X_region, voxel_coords, time_sqrd_mat, kernel_type_id) {
@@ -58,7 +56,7 @@ eval_stage1_nll <- function(theta, X_region, voxel_coords, time_sqrd_mat, kernel
 #'   var_noise: Estimated noise variance
 #'   objective: optimal loss (negiatve log-likelihood) found.
 #' @noRd
-opt_inter <- function(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id, diag_time, noiseless) {
-    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id, diag_time, noiseless)
+opt_inter <- function(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id, setting) {
+    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id, setting)
 }
 

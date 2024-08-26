@@ -4,6 +4,7 @@
 #' @param voxel_coords coordinates of voxels in the region
 #' @param time_sqrd_mat Temporal squared distance matrix
 #' @param kernel_type_id Choice of spatial kernel. Default "matern_5_2".
+#' @param cov_setting Choice of covariance structure.
 #' @param num_init Number of initializations to try
 #' @return Esimated intra parameters and noise variance
 #'
@@ -13,10 +14,7 @@ fit_intra_model <- function(
     region_mx,
     voxel_coords,
     kernel_type_id = 3L,
-    # time_sqrd_mat,
-    nugget_only = FALSE,
-    noiseless = FALSE,
-    noiseless_profiled = FALSE,
+    cov_setting = c("standard", "diag_time", "noiseless", "noiseless_profiled"),
     num_init = 1L,
     init = NULL) {
   # Param list: phi, tau_gamma, k_gamma, nugget_gamma
@@ -25,11 +23,13 @@ fit_intra_model <- function(
   #   param_init <- c(0.1, 0.1)
   # }
 
+  cov_setting <- match.arg(cov_setting)
+
   m <- nrow(region_mx)
   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
   inits <- NULL
   if (is.null(init)) {
-    inits <- stage1_init(region_mx, voxel_coords, num_init, noiseless_profiled)
+    inits <- stage1_init(region_mx, voxel_coords, num_init, cov_setting == "noiseless_profiled")
   } else {
     inits <- matrix(init, nrow = 1)
   }
@@ -44,8 +44,7 @@ fit_intra_model <- function(
       {
         intra <- opt_intra(
           inits[init_num, ], matrix(region_mx, ncol = 1),
-          voxel_coords, time_sqrd_mat, kernel_type_id,
-          nugget_only, noiseless, noiseless_profiled
+          voxel_coords, time_sqrd_mat, kernel_type_id, cov_setting
         )
       },
       error = function(e) {

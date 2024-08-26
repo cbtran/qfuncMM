@@ -7,6 +7,7 @@
 #include "Rcpp/iostream/Rstreambuf.h"
 #include "Rcpp/vector/instantiation.h"
 #include "armadillo"
+#include "cov_setting.h"
 #include "ensmallen_bits/callbacks/grad_clip_by_norm.hpp"
 #include "ensmallen_bits/callbacks/store_best_coordinates.hpp"
 #include "get_cor_mat.h"
@@ -23,19 +24,17 @@
 //' @param voxel_coords L x 3 matrix of voxel coordinates
 //' @param time_sqrd_mat M x M temporal squared distance matrix
 //' @param kernel_type_id Choice of spatial kernel
-//' @return List of 2 components:
-//'   theta: Estimated intra-regional parameters
-//'   var_noise: Estimated noise variance
+//' @param setting Choice of covariance structure
 //' @noRd
 // [[Rcpp::export]]
 Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
                      const arma::mat &voxel_coords,
                      const arma::mat &time_sqrd_mat, int kernel_type_id,
-                     bool nugget_only, bool noiseless,
-                     bool noiseless_profiled) {
+                     const std::string &setting) {
   using namespace arma;
   // Necessary evil since we can't easily expose enums to R
   KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
+  CovSetting cov_setting = strToCovSettingMap.at(setting);
 
   // phi, tau, k, nugget
   // or phi, tau, nugget_over_k if profiled
@@ -44,18 +43,23 @@ Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
 
   // Construct the objective function.
   std::unique_ptr<IOptIntra> opt_intra;
-  if (noiseless_profiled) {
+  switch (cov_setting) {
+  case CovSetting::noiseless_profiled:
     opt_intra = std::make_unique<OptIntraNoiselessProfiled>(
         X_region, dist_sqrd_mat, time_sqrd_mat, kernel_type);
-  } else if (noiseless)
+    break;
+  case CovSetting::noiseless:
     opt_intra = std::make_unique<OptIntraNoiseless>(X_region, dist_sqrd_mat,
                                                     time_sqrd_mat, kernel_type);
-  else if (nugget_only)
+    break;
+  case CovSetting::diag_time:
     opt_intra = std::make_unique<OptIntraDiagTime>(X_region, dist_sqrd_mat,
                                                    time_sqrd_mat, kernel_type);
-  else
+    break;
+  default:
     opt_intra = std::make_unique<OptIntra>(X_region, dist_sqrd_mat,
                                            time_sqrd_mat, kernel_type);
+  }
 
   // Create the L_BFGS optimizer with default parameters.
   ens::L_BFGS optimizer(20);
@@ -70,7 +74,7 @@ Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
     Rcpp::stop("Optimization failed " + std::string(re.what()));
   }
   vec theta = softplus(theta_unrestrict);
-  if (noiseless_profiled) {
+  if (cov_setting == CovSetting::noiseless_profiled) {
     vec theta_orig = arma::zeros(4);
     theta_orig(0) = theta(0);
     theta_orig(1) = theta(1);
@@ -163,12 +167,13 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
                      const arma::mat &time_sqrd_mat,
                      const arma::vec &stage1ParamsRegion1,
                      const arma::vec &stage1ParamsRegion2, int kernel_type_id,
-                     bool diag_time, bool noiseless) {
+                     const std::string &setting) {
   using arma::mat;
   using arma::vec;
 
   // Necessary evil since we can't easily expose enums to R
   KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
+  CovSetting cov_setting = strToCovSettingMap.at(setting);
 
   // Read in parameters inits
   mat theta_vec(theta_init);
@@ -195,14 +200,21 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
 
   // Construct the objective function.
   std::unique_ptr<IOptInter> opt_inter;
-  if (diag_time) {
+  switch (cov_setting) {
+  case CovSetting::diag_time:
     opt_inter = std::make_unique<OptInterDiagTime>(
         dataRegion1, dataRegion2, stage1ParamsRegion1, stage1ParamsRegion2,
         block_region_1, block_region_2, time_sqrd_mat);
-  } else {
+    break;
+  case CovSetting::noiseless:
     opt_inter = std::make_unique<OptInter>(
         dataRegion1, dataRegion2, stage1ParamsRegion1, stage1ParamsRegion2,
-        block_region_1, block_region_2, time_sqrd_mat, noiseless);
+        block_region_1, block_region_2, time_sqrd_mat, true);
+    break;
+  default:
+    opt_inter = std::make_unique<OptInter>(
+        dataRegion1, dataRegion2, stage1ParamsRegion1, stage1ParamsRegion2,
+        block_region_1, block_region_2, time_sqrd_mat, false);
   }
 
   ens::L_BFGS optimizer(10);
@@ -212,7 +224,8 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
 
   ens::StoreBestCoordinates<mat> cb;
   optimizer.Optimize(*opt_inter, theta_vec, ens::GradClipByNorm(100),
-                     StatusCallback(diag_time), ens::Report(1), cb);
+                     StatusCallback(cov_setting == CovSetting::diag_time),
+                     ens::Report(1), cb);
 
   Rcpp::Rcout << "NegLL Final: " << std::setprecision(10) << cb.BestObjective()
               << std::endl;
@@ -223,7 +236,7 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
   result(1) = softplus(best(1));           // kEta1
   result(2) = softplus(best(2));           // kEta2
 
-  if (diag_time) {
+  if (cov_setting == CovSetting::diag_time) {
     result(3) = 0; // tauEta
     result(4) = 1; // nuggetEta
   } else {

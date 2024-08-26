@@ -8,8 +8,7 @@ qfuncMM(
   region_list,
   voxel_coords,
   kernel_type = "matern_5_2",
-  diag_time = 0,
-  noiseless = TRUE,
+  cov_setting = c("standard", "diag_time", "noiseless", "noiseless_profiled"),
   verbose = TRUE
 )
 }
@@ -21,9 +20,7 @@ in the list is a \eqn{L_j \times 3} matrix of spatial coordinates.}
 
 \item{kernel_type}{Choice of spatial kernel. Default "matern_5_2".}
 
-\item{diag_time}{Should the temporal covariance matrix be diagonal?}
-
-\item{noiseless}{Should the model be fit without an overall noise term?}
+\item{cov_setting}{Choice of covariance setting.}
 
 \item{verbose}{Print progress messages.}
 }

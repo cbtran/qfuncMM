@@ -9,6 +9,7 @@
 #' @param region2_stage1, Estimated stage 1 parameters for region 2
 #' @param rho_eblue, EBLUE from stage 1 for initialization
 #' @param kernel_type_id Choice of spatial kernel
+#' @param cov_setting Choice of covariance structure
 #' @return Estimated stage 2 parameters
 #' @noRd
 
@@ -21,7 +22,8 @@ fit_inter_model <- function(
     region1_stage1,
     region2_stage1,
     rho_eblue,
-    kernel_type_id, noiseless, diag_time = FALSE) {
+    kernel_type_id,
+    cov_setting) {
   # Parameter list: rho, kEta1, kEta2, tauEta, nugget
   softminus <- function(x) {
     log(exp(x) - 1)
@@ -34,7 +36,7 @@ fit_inter_model <- function(
 
   # Use the EBLUE as a reasonable initialization.
   init <- c(logit(rho_eblue, -1, 1), softminus(1), softminus(1), 0, softminus(0.1))
-  if (diag_time) {
+  if (cov_setting == "diag_time") {
     init <- c(logit(rho_eblue, -1, 1), softminus(1), softminus(1))
   }
 
@@ -48,8 +50,7 @@ fit_inter_model <- function(
     stage1ParamsRegion1 = region1_stage1,
     stage1ParamsRegion2 = region2_stage1,
     kernel_type_id = kernel_type_id,
-    diag_time = diag_time,
-    noiseless = noiseless
+    setting = cov_setting
   )
 
   params <- result$theta
