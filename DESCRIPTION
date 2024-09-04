@@ -10,7 +10,7 @@ Authors@R: c(
 Description: This package implements a mixed-effects model for estimating resting
     state functional connectivty of the brain using voxel-level BOLD signals.
 License: GPL-2
-Imports: Rcpp
+Imports: Rcpp, jsonlite
 LinkingTo: Rcpp, RcppArmadillo, RcppEnsmallen
 Encoding: UTF-8
 RoxygenNote: 7.3.1

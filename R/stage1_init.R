@@ -52,7 +52,7 @@ init_temporal <- function(region_mx) {
 init_spatial <- function(region_mx, voxel_coords) {
   num_voxel <- nrow(voxel_coords)
   num_timept <- nrow(region_mx)
-  dist_mat <- as.matrix(dist(voxel_coords))
+  dist_mat <- as.matrix(stats::dist(voxel_coords))
   xbar <- colMeans(region_mx) # length Lj vector
   centered <- t(region_mx) - xbar # Lj x M matrix with centered columns
   raw_cov <- array(NA, dim = c(num_voxel, num_voxel, num_timept))

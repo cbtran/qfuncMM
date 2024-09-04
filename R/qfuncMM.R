@@ -9,7 +9,7 @@
 #'
 #' @useDynLib qfuncMM
 #' @importFrom Rcpp sourceCpp
-#' @importFrom stats cor
+#' @importFrom stats cor dist
 #' @export
 qfuncMM <- function(region_list, voxel_coords,
                     kernel_type = "matern_5_2",

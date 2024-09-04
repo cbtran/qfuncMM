@@ -20,7 +20,7 @@ in the list is a \eqn{L_j \times 3} matrix of spatial coordinates.}
 
 \item{kernel_type}{Choice of spatial kernel. Default "matern_5_2".}
 
-\item{cov_setting}{Choice of covariance setting.}
+\item{cov_setting}{Choice of covariance structure.}
 
 \item{verbose}{Print progress messages.}
 }
