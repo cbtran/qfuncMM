@@ -60,12 +60,9 @@ fit_intra_model <- function(
   }
 
   intra_param <- c(best_intra$theta, best_intra$var_noise)
-  # if (nugget_only) {
-  #   intra_param <- c(intra_param[1], 1, 0, intra_param[2], best_intra$var_noise)
-  # }
   names(intra_param) <- c("phi", "tau_gamma", "k_gamma", "nugget_gamma", "var_noise")
   list(
-    intra_param = intra_param, eblue = intra$eblue, objval = intra$objval,
+    intra_param = intra_param, eblue = best_intra$eblue, objval = best_intra$objval,
     initializations = inits, results_by_init = results_by_init
   )
 }

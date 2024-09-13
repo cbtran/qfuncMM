@@ -12,7 +12,7 @@ OptIntraNoiseless::OptIntraNoiseless(const arma::mat &data,
                                      const arma::mat &timeSqrd,
                                      KernelType kernelType, bool verbose)
     : IOptIntra(data, distSqrd, timeSqrd, kernelType, verbose) {
-  noiseVarianceEstimate_ = 1;
+  noiseVarianceEstimate_ = NA_REAL;
 }
 
 double OptIntraNoiseless::EvaluateWithGradient(const arma::mat &theta,
@@ -73,7 +73,11 @@ double OptIntraNoiseless::EvaluateWithGradient(const arma::mat &theta,
   }
   double qdr = as_scalar(dataCentered.t() * vInvCentered);
 
-  double logremlval = 0.5 * (logreml1 + logreml2 + qdr);
+  double fixed =
+      (numVoxel_ - 1) * numTimePt_ * log((numVoxel_ - 1) * numTimePt_) -
+      (numVoxel_ - 1) * numTimePt_;
+
+  double logremlval = 0.5 * (logreml1 + logreml2 + qdr + fixed);
   if (std::isnan(logremlval)) {
     throw std::runtime_error("logremlval is nan");
   }

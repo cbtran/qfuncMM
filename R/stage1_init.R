@@ -98,7 +98,10 @@ stage1_init <- function(region_mx, voxel_coords, num_init, profiled_k) {
       # Randomly perturb the initializations
       for (it in seq_along(theta)) {
         t <- theta[it]
-        t_inits <- abs(stats::rnorm(num_init - 1, t, t / 2))
+        t_inits <- stats::rlnorm(
+          num_init - 1,
+          meanlog = log(t), sdlog = ifelse(t < 0.01, 3, 1)
+        )
         inits[-1, it] <- t_inits
       }
     }

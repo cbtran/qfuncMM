@@ -7,18 +7,6 @@
  Inter-regional model
 *****************************************************************************/
 
-OptInter::OptInter(const arma::mat &dataRegion1, const arma::mat &dataRegion2,
-                   const arma::vec &stage1ParamsRegion1,
-                   const arma::vec &stage1ParamsRegion2,
-                   const arma::mat &spaceTimeKernelRegion1,
-                   const arma::mat &spaceTimeKernelRegion2,
-                   const arma::mat &timeSqrd, bool noiseless)
-    : IOptInter(dataRegion1, dataRegion2, stage1ParamsRegion1,
-                stage1ParamsRegion2, spaceTimeKernelRegion1,
-                spaceTimeKernelRegion2, timeSqrd) {
-  noiseless_ = noiseless;
-}
-
 // Compute both objective function and its gradient
 double OptInter::EvaluateWithGradient(const arma::mat &theta_unrestrict,
                                       arma::mat &gradient) {

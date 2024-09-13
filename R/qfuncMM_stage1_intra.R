@@ -18,12 +18,13 @@
 qfuncMM_stage1_intra <- function(region_list, voxel_coords,
                                  kernel_type = "matern_5_2",
                                  cov_setting = c("standard", "diag_time", "noiseless", "noiseless_profiled"),
-                                 out_file = ".",
+                                 out_file = NULL,
                                  overwrite = FALSE,
                                  num_init = 10L,
                                  verbose = TRUE) {
-  if (out_file == ".") {
-    out_file <- file.path(".", sprintf("qfuncMM_stage1_intra_%s.json", format(Sys.time(), "%Y%m%d_%H%M%S")))
+  start_time <- Sys.time()
+  if (is.null(out_file)) {
+    out_file <- file.path(".", sprintf("qfuncMM_stage1_intra_%s.json", format(start_time, "%Y%m%d_%H%M%S")))
   }
   out_dir <- dirname(out_file)
   if (!file.info(out_dir)$isdir || file.access(out_dir, mode = 2) != 0) {
@@ -71,8 +72,16 @@ qfuncMM_stage1_intra <- function(region_list, voxel_coords,
     n_region, n_timept, num_init
   ))
 
-  outlist <- vector("list", length = n_region)
-  names(outlist) <- paste0("r", seq_len(n_region))
+  outlist <- vector("list", length = n_region + 1)
+  names(outlist) <- c("info", paste0("r", seq_len(n_region)))
+  outlist[["info"]] <- list(
+    n_region = n_region,
+    n_timept = n_timept,
+    kernel_type = kernel_type,
+    cov_setting = cov_setting,
+    num_init = num_init,
+    timestamp = format(start_time, "%Y-%m-%dT%H:%M:%OS3Z")
+  )
 
   # Standardize the data matrices
   region_list_std <- lapply(region_list, \(reg) (reg - mean(reg)) / stats::sd(reg))

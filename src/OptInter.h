@@ -24,17 +24,12 @@ public:
       : numVoxelRegion1_(dataRegion1.n_cols),
         numVoxelRegion2_(dataRegion2.n_cols), numTimePt_(dataRegion1.n_rows),
         spaceTimeKernelRegion1_(spatialKernelRegion1),
-        spaceTimeKernelRegion2_(spatialKernelRegion2), timeSqrd_(timeSqrd),
-        noiseVarianceEstimates_(
-            std::make_pair(stage1ParamsRegion1(4), stage1ParamsRegion2(4))) {
+        spaceTimeKernelRegion2_(spatialKernelRegion2), timeSqrd_(timeSqrd) {
     using namespace arma;
     design_ = join_vert(join_horiz(ones(numTimePt_ * numVoxelRegion1_, 1),
                                    zeros(numTimePt_ * numVoxelRegion1_, 1)),
                         join_horiz(zeros(numTimePt_ * numVoxelRegion2_, 1),
                                    ones(numTimePt_ * numVoxelRegion2_, 1)));
-    dataRegionCombined_ = join_vert(
-        vectorise(dataRegion1) / sqrt(noiseVarianceEstimates_.first),
-        vectorise(dataRegion2) / sqrt(noiseVarianceEstimates_.second));
   }
 
   virtual double EvaluateWithGradient(const arma::mat &theta_unrestrict,
@@ -56,7 +51,23 @@ public:
            const arma::vec &stage1ParamsRegion2,
            const arma::mat &spatialKernelRegion1,
            const arma::mat &spatialKernelRegion2, const arma::mat &timeSqrd,
-           bool noiseless);
+           bool noiseless)
+      : IOptInter(dataRegion1, dataRegion2, stage1ParamsRegion1,
+                  stage1ParamsRegion2, spatialKernelRegion1,
+                  spatialKernelRegion2, timeSqrd),
+        noiseless_(noiseless) {
+    if (noiseless) {
+      noiseVarianceEstimates_ = std::make_pair(NA_REAL, NA_REAL);
+      dataRegionCombined_ =
+          join_vert(vectorise(dataRegion1), vectorise(dataRegion2));
+    } else {
+      noiseVarianceEstimates_ =
+          std::make_pair(stage1ParamsRegion1(4), stage1ParamsRegion2(4));
+      dataRegionCombined_ = join_vert(
+          vectorise(dataRegion1) / sqrt(noiseVarianceEstimates_.first),
+          vectorise(dataRegion2) / sqrt(noiseVarianceEstimates_.second));
+    }
+  }
 
   double EvaluateWithGradient(const arma::mat &theta_unrestrict,
                               arma::mat &gradient) override;
@@ -71,7 +82,17 @@ public:
                    const arma::vec &stage1ParamsRegion2,
                    const arma::mat &spatialKernelRegion1,
                    const arma::mat &spatialKernelRegion2,
-                   const arma::mat &timeSqrd);
+                   const arma::mat &timeSqrd)
+      : IOptInter(dataRegion1, dataRegion2, stage1ParamsRegion1,
+                  stage1ParamsRegion2, spatialKernelRegion1,
+                  spatialKernelRegion2, timeSqrd) {
+
+    noiseVarianceEstimates_ =
+        std::make_pair(stage1ParamsRegion1(4), stage1ParamsRegion2(4));
+    dataRegionCombined_ = join_vert(
+        vectorise(dataRegion1) / sqrt(noiseVarianceEstimates_.first),
+        vectorise(dataRegion2) / sqrt(noiseVarianceEstimates_.second));
+  }
 
   double EvaluateWithGradient(const arma::mat &theta_unrestrict,
                               arma::mat &gradient) override;
