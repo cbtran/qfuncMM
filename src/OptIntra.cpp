@@ -58,9 +58,15 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
   double logreml3 = logreml3mat;
 
   double logreml1 = arma::accu(arma::log(eigen));
-  double logreml2 = arma::log_det_sympd(UtVinvU);
+  double logreml2;
+  if (!arma::log_det_sympd(logreml2, UtVinvU)) {
+    logreml2 = arma::log_det(UtVinvU).real();
+  }
 
   double logremlval = 0.5 * (logreml1 + logreml2 + logreml3);
+  if (std::isnan(logremlval)) {
+    throw std::runtime_error("logremlval is nan");
+  }
 
   // Gradients
   const mat &dTemporalDvar = timeRbf;
