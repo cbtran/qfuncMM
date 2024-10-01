@@ -1,4 +1,5 @@
 #include "OptInter.h"
+#include "cov_setting.h"
 #include "helper.h"
 #include "rbf.h"
 #include <math.h>
@@ -33,23 +34,54 @@ double OptInter::EvaluateWithGradient(const arma::mat &theta_unrestrict,
   mat At = rbf(timeSqrd_, tauEta);
   At.diag() += nuggetEta;
 
-  mat M_12 = arma::repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At,
-                          numVoxelRegion1_, numVoxelRegion2_);
-
-  mat M_11 = spaceTimeKernelRegion1_ +
-             kEta1 * arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_);
-  mat M_22 = spaceTimeKernelRegion2_ +
-             kEta2 * arma::repmat(At, numVoxelRegion2_, numVoxelRegion2_);
-
-  if (!noiseless_) {
-    M_11 +=
+  mat M_11, M_22, M_12;
+  if (!IsNoiseless(cov_setting_region1_) &&
+      !IsNoiseless(cov_setting_region2_)) {
+    M_12 = arma::repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At, numVoxelRegion1_,
+                        numVoxelRegion2_);
+    M_11 =
+        spaceTimeKernelRegion1_ +
+        kEta1 * arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_) +
         arma::eye(numVoxelRegion1_ * numTimePt_, numVoxelRegion1_ * numTimePt_);
-    M_22 +=
+    M_22 =
+        spaceTimeKernelRegion2_ +
+        kEta2 * arma::repmat(At, numVoxelRegion2_, numVoxelRegion2_) +
         arma::eye(numVoxelRegion2_ * numTimePt_, numVoxelRegion2_ * numTimePt_);
+  } else if (IsNoiseless(cov_setting_region1_) &&
+             IsNoiseless(cov_setting_region2_)) {
+    M_12 = arma::repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At, numVoxelRegion1_,
+                        numVoxelRegion2_);
+    M_11 = spaceTimeKernelRegion1_ +
+           kEta1 * arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_);
+    M_22 = spaceTimeKernelRegion2_ +
+           kEta2 * arma::repmat(At, numVoxelRegion2_, numVoxelRegion2_);
+  } else if (IsNoiseless(cov_setting_region1_)) {
+    // Region 1 is noiseless and region 2 is noisy
+    double sigma_region2 = sqrt(sigma2_.second);
+    M_12 = arma::repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At * sigma_region2,
+                        numVoxelRegion1_, numVoxelRegion2_);
+    M_11 = spaceTimeKernelRegion1_ +
+           kEta1 * arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_);
+    M_22 = sigma_region2 * spaceTimeKernelRegion2_ +
+           sigma2_.second * kEta2 *
+               arma::repmat(At, numVoxelRegion2_, numVoxelRegion2_) +
+           sigma2_.second * arma::eye(numVoxelRegion2_ * numTimePt_,
+                                      numVoxelRegion2_ * numTimePt_);
+  } else {
+    // Region 1 is noisy and region 2 is noiseless
+    double sigma_region1 = sqrt(sigma2_.first);
+    M_12 = arma::repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At * sigma_region1,
+                        numVoxelRegion1_, numVoxelRegion2_);
+    M_11 = sigma_region1 * spaceTimeKernelRegion1_ +
+           sigma2_.first * kEta1 *
+               arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_) +
+           sigma2_.first * arma::eye(numVoxelRegion1_ * numTimePt_,
+                                     numVoxelRegion1_ * numTimePt_);
+    M_22 = spaceTimeKernelRegion2_ +
+           kEta2 * arma::repmat(At, numVoxelRegion2_, numVoxelRegion2_);
   }
 
   mat V = join_vert(join_horiz(M_11, M_12), join_horiz(M_12.t(), M_22));
-
   mat VR = arma::chol(V);
   mat VRinv = arma::inv(arma::trimatu(VR));
 

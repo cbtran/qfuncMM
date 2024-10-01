@@ -30,11 +30,11 @@
 Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
                      const arma::mat &voxel_coords,
                      const arma::mat &time_sqrd_mat, int kernel_type_id,
-                     const std::string &setting) {
+                     int cov_setting_id) {
   using namespace arma;
   // Necessary evil since we can't easily expose enums to R
   KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
-  CovSetting cov_setting = strToCovSettingMap.at(setting);
+  CovSetting cov_setting = static_cast<CovSetting>(cov_setting_id);
 
   // phi, tau, k, nugget
   // or phi, tau, nugget_over_k if profiled
@@ -166,14 +166,15 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
                      const arma::mat &voxel_coords_2,
                      const arma::mat &time_sqrd_mat,
                      const arma::vec &stage1ParamsRegion1,
-                     const arma::vec &stage1ParamsRegion2, int kernel_type_id,
-                     const std::string &setting) {
+                     const arma::vec &stage1ParamsRegion2, int cov_setting_id1,
+                     int cov_setting_id2, int kernel_type_id) {
   using arma::mat;
   using arma::vec;
 
   // Necessary evil since we can't easily expose enums to R
   KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
-  CovSetting cov_setting = strToCovSettingMap.at(setting);
+  CovSetting cov_setting1 = static_cast<CovSetting>(cov_setting_id1);
+  CovSetting cov_setting2 = static_cast<CovSetting>(cov_setting_id2);
 
   // Read in parameters inits
   mat theta_vec(theta_init);
@@ -198,23 +199,20 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
           stage1ParamsRegion2(3) *
               arma::eye(dataRegion2.n_rows, dataRegion2.n_rows));
 
+  bool any_diag_time = cov_setting1 == CovSetting::diag_time ||
+                       cov_setting2 == CovSetting::diag_time;
   // Construct the objective function.
   std::unique_ptr<IOptInter> opt_inter;
-  switch (cov_setting) {
-  case CovSetting::diag_time:
+  if (any_diag_time) {
     opt_inter = std::make_unique<OptInterDiagTime>(
         dataRegion1, dataRegion2, stage1ParamsRegion1, stage1ParamsRegion2,
-        block_region_1, block_region_2, time_sqrd_mat);
-    break;
-  case CovSetting::noiseless:
+        block_region_1, block_region_2, cov_setting1, cov_setting2,
+        time_sqrd_mat);
+  } else {
     opt_inter = std::make_unique<OptInter>(
         dataRegion1, dataRegion2, stage1ParamsRegion1, stage1ParamsRegion2,
-        block_region_1, block_region_2, time_sqrd_mat, true);
-    break;
-  default:
-    opt_inter = std::make_unique<OptInter>(
-        dataRegion1, dataRegion2, stage1ParamsRegion1, stage1ParamsRegion2,
-        block_region_1, block_region_2, time_sqrd_mat, false);
+        block_region_1, block_region_2, cov_setting1, cov_setting2,
+        time_sqrd_mat);
   }
 
   ens::L_BFGS optimizer(10);
@@ -224,11 +222,11 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
 
   ens::StoreBestCoordinates<mat> cb;
   optimizer.Optimize(*opt_inter, theta_vec, ens::GradClipByNorm(100),
-                     StatusCallback(cov_setting == CovSetting::diag_time),
-                     ens::Report(1), cb);
+                     StatusCallback(any_diag_time), ens::Report(1), cb);
 
-  Rcpp::Rcout << "NegLL Final: " << std::setprecision(10) << cb.BestObjective()
-              << std::endl;
+  // Rcpp::Rcout << "NegLL Final: " << std::setprecision(10) <<
+  // cb.BestObjective()
+  //             << std::endl;
 
   vec best(cb.BestCoordinates());
   vec result(5);
@@ -236,7 +234,7 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
   result(1) = softplus(best(1));           // kEta1
   result(2) = softplus(best(2));           // kEta2
 
-  if (cov_setting == CovSetting::diag_time) {
+  if (any_diag_time) {
     result(3) = 0; // tauEta
     result(4) = 1; // nuggetEta
   } else {
@@ -244,9 +242,8 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
     result(4) = softplus(best(4)); // nuggetEta
   }
 
-  std::pair<double, double> noise_estimates =
-      opt_inter->GetNoiseVarianceEstimates();
-  vec var_noise = {noise_estimates.first, noise_estimates.second};
+  std::pair<double, double> sigma2_hat = opt_inter->GetNoiseVarianceEstimates();
+  vec var_noise = {sigma2_hat.first, sigma2_hat.second};
 
   return Rcpp::List::create(Rcpp::Named("theta") = result,
                             Rcpp::Named("var_noise") = var_noise,

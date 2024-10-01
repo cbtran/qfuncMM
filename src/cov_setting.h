@@ -1,9 +1,6 @@
 #ifndef COV_SETTING_H
 #define COV_SETTING_H
 
-#include <string>
-#include <unordered_map>
-
 enum CovSetting {
   standard = 0,
   diag_time = 1,
@@ -11,10 +8,9 @@ enum CovSetting {
   noiseless_profiled = 3,
 };
 
-static const std::unordered_map<std::string, CovSetting> strToCovSettingMap = {
-    {"standard", standard},
-    {"diag_time", diag_time},
-    {"noiseless", noiseless},
-    {"noiseless_profiled", noiseless_profiled}};
+static const bool IsNoiseless(CovSetting cov_setting) {
+  return cov_setting == CovSetting::noiseless ||
+         cov_setting == CovSetting::noiseless_profiled;
+}
 
 #endif

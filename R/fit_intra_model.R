@@ -44,7 +44,7 @@ fit_intra_model <- function(
       {
         intra <- opt_intra(
           inits[init_num, ], matrix(region_mx, ncol = 1),
-          voxel_coords, time_sqrd_mat, kernel_type_id, cov_setting
+          voxel_coords, time_sqrd_mat, kernel_type_id, cov_setting_dict(cov_setting)
         )
       },
       error = function(e) {

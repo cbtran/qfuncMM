@@ -9,7 +9,7 @@ ENV PATH /opt/conda/bin:$PATH
 ### install quarto
 # versions: https://quarto.org/docs/download/_download.json
 RUN curl --silent -L --fail \
-        https://github.com/quarto-dev/quarto-cli/releases/download/v1.2.269/quarto-1.2.269-linux-amd64.deb > /tmp/quarto.deb && \
+        https://github.com/quarto-dev/quarto-cli/releases/download/v1.5.57/quarto-1.5.57-linux-amd64.deb > /tmp/quarto.deb && \
     apt update && \
     apt install -y --no-install-recommends /tmp/quarto.deb tmux gdb r-base-dev clangd
 
