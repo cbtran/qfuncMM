@@ -19,7 +19,7 @@
 #' @export
 qfuncMM_stage1_intra <- function(subject_id, region_uniqid, region_name, region_data, region_coords,
                                  kernel_type = "matern_5_2",
-                                 cov_setting = c("standard", "diag_time", "noiseless", "noiseless_profiled"),
+                                 cov_setting = c("noisy", "diag_time", "noiseless", "noiseless_profiled"),
                                  out_file = NULL,
                                  overwrite = FALSE,
                                  num_init = 10L,

@@ -1,7 +1,7 @@
 # Lookup covariance setting by name
 cov_setting_dict <- function(name) {
   switch(name,
-    standard = {
+    noisy = {
       return(0L)
     },
     diag_time = {

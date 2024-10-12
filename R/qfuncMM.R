@@ -13,7 +13,7 @@
 #' @export
 qfuncMM <- function(region_list, voxel_coords,
                     kernel_type = "matern_5_2",
-                    cov_setting = c("standard", "diag_time", "noiseless", "noiseless_profiled"),
+                    cov_setting = c("noisy", "diag_time", "noiseless", "noiseless_profiled"),
                     verbose = TRUE) {
   kernel_type_id <- kernel_dict(kernel_type)
   cov_setting <- match.arg(cov_setting)

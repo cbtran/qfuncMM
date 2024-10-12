@@ -2,7 +2,7 @@
 #define COV_SETTING_H
 
 enum CovSetting {
-  standard = 0,
+  noisy = 0,
   diag_time = 1,
   noiseless = 2,
   noiseless_profiled = 3,
