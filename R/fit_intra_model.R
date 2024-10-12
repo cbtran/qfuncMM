@@ -39,8 +39,9 @@ fit_intra_model <- function(
 
   best_intra <- NULL
   best_obj <- Inf
-  results_by_init <- matrix(nrow = n_init, ncol = 5)
-  colnames(results_by_init) <- c("phi", "tau_gamma", "k_gamma", "nugget_gamma", "nll")
+  out_names <- c("phi", "tau_gamma", "k_gamma", "nugget_gamma", "psi", "nll")
+  results_by_init <- matrix(nrow = n_init, ncol = length(out_names))
+  colnames(results_by_init) <- out_names
   for (init_num in seq_len(n_init)) {
     intra <- tryCatch(
       {
@@ -51,18 +52,18 @@ fit_intra_model <- function(
       },
       error = function(e) {
         warning(e)
-        list(theta = rep(NA, 4), var_noise = NA, eblue = rep(NA, m), objval = Inf)
+        list(theta = rep(NA, 4), psi = NA, var_noise = NA, eblue = rep(NA, m), objval = Inf)
       }
     )
-    results_by_init[init_num, ] <- c(intra$theta, intra$objval)
+    results_by_init[init_num, ] <- c(intra$theta, intra$psi, intra$objval)
     if (intra$objval < best_obj) {
       best_obj <- intra$objval
       best_intra <- intra
     }
   }
 
-  intra_param <- c(best_intra$theta, best_intra$var_noise)
-  names(intra_param) <- c("phi", "tau_gamma", "k_gamma", "nugget_gamma", "var_noise")
+  intra_param <- c(best_intra$theta, best_intra$psi, best_intra$var_noise)
+  names(intra_param) <- c("phi", "tau_gamma", "k_gamma", "nugget_gamma", "psi", "var_noise")
   list(
     intra_param = intra_param, eblue = best_intra$eblue, objval = best_intra$objval,
     initializations = inits, results_by_init = results_by_init

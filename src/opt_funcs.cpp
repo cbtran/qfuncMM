@@ -12,6 +12,7 @@
 #include "ensmallen_bits/callbacks/store_best_coordinates.hpp"
 #include "get_cor_mat.h"
 #include "helper.h"
+#include "matern.h"
 // [[Rcpp::depends(RcppEnsmallen)]]
 
 /*****************************************************************************
@@ -86,11 +87,14 @@ Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
     theta = theta_orig;
   }
 
-  return Rcpp::List::create(Rcpp::Named("theta") = theta,
-                            Rcpp::Named("var_noise") =
-                                opt_intra->GetNoiseVarianceEstimate(),
-                            Rcpp::Named("eblue") = opt_intra->GetEBlue(),
-                            Rcpp::Named("objval") = optval);
+  // Compute average of spatial covariance
+  double psi = accu(matern_5_2(dist_sqrd_mat, theta(0))) / dist_sqrd_mat.n_elem;
+
+  return Rcpp::List::create(
+      Rcpp::Named("theta") = theta, Rcpp::Named("psi") = psi,
+      Rcpp::Named("var_noise") = opt_intra->GetNoiseVarianceEstimate(),
+      Rcpp::Named("eblue") = opt_intra->GetEBlue(),
+      Rcpp::Named("objval") = optval);
 }
 
 // [[Rcpp::export]]
