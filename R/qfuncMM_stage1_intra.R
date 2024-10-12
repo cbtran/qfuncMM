@@ -7,7 +7,7 @@
 #' @param region_data \eqn{M\times L_j} matrix
 #' @param region_coords \eqn{L_j \times 3} matrix of spatial coordinates.
 #' @param kernel_type Choice of spatial kernel.
-#' @param cov_setting Choice of covariance structure.
+#' @param cov_setting Choice of covariance structure. Default option 'auto' chooses between 'noisy' and 'noiseless' based on model fit.
 #' @param out_file Output file path.
 #' @param overwrite Overwrite output file if it exists.
 #' @param num_init Number of initializations for multi-start optimiization.
@@ -19,7 +19,7 @@
 #' @export
 qfuncMM_stage1_intra <- function(subject_id, region_uniqid, region_name, region_data, region_coords,
                                  kernel_type = "matern_5_2",
-                                 cov_setting = c("noisy", "diag_time", "noiseless", "noiseless_profiled"),
+                                 cov_setting = c("auto", "noisy", "noiseless"),
                                  out_file = NULL,
                                  overwrite = FALSE,
                                  num_init = 10L,
@@ -30,6 +30,8 @@ qfuncMM_stage1_intra <- function(subject_id, region_uniqid, region_name, region_
   start_time <- Sys.time()
   kernel_type_id <- kernel_dict(kernel_type)
   cov_setting <- match.arg(cov_setting)
+  log_var_ratio_threshold <- 5
+  psi_threshold <- 0.5
 
   if (is.null(out_file)) {
     out_file <- file.path(
@@ -54,27 +56,57 @@ qfuncMM_stage1_intra <- function(subject_id, region_uniqid, region_name, region_
     region_uniqid, region_name, n_voxel, n_timept, num_init
   ))
 
+  # Standardize the data matrices
+  region_data_std <- (region_data - mean(region_data)) / stats::sd(region_data)
+
+  if (cov_setting %in% c("auto", "noisy")) {
+    message("Fitting noisy model...")
+    intra <- fit_intra_model(
+      region_data_std,
+      region_coords,
+      kernel_type_id,
+      "noisy",
+      num_init,
+      verbose = verbose
+    )
+    if (all(is.infinite(intra$results_by_init[, "nll"]))) {
+      stop("The optimization has failed for every initialization. Try increasing the number of initializations or checking your data.")
+    }
+    if (cov_setting == "auto") {
+      message("Checking model fit")
+      var_ratio <- log(intra$intra_param["k_gamma"] + intra$intra_param["nugget_gamma"])
+      if (var_ratio > log_var_ratio_threshold || intra$intra_param["psi"] >= psi_threshold) {
+        cov_setting <- "noiseless"
+      } else {
+        cov_setting <- "noisy"
+      }
+      message(sprintf(
+        "Model fit: var_ratio = %.3f, psi = %.3f. Choosing %s model.",
+        var_ratio, intra$intra_param["psi"], cov_setting
+      ))
+    }
+  }
+  if (cov_setting == "noiseless") {
+    message("Fitting noiseless model...")
+    intra <- fit_intra_model(
+      region_data_std,
+      region_coords,
+      kernel_type_id,
+      "noiseless",
+      num_init,
+      verbose = verbose
+    )
+    if (all(is.infinite(intra$results_by_init[, "nll"]))) {
+      stop("The optimization has failed for every initialization. Try increasing the number of initializations or checking your data.")
+    }
+  }
+
   outlist <- list(
     region_uniqid = region_uniqid, region_name = region_name, subject_id = subject_id,
     cov_setting = cov_setting, kernel_type = kernel_type,
     start_time = format(start_time, "%Y-%m-%dT%H:%M:%OS3Z"),
     end_time = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z")
   )
-
-  # Standardize the data matrices
-  region_data_std <- (region_data - mean(region_data)) / stats::sd(region_data)
-
-  intra <- fit_intra_model(
-    region_data_std,
-    region_coords,
-    kernel_type_id,
-    cov_setting,
-    num_init,
-    verbose = verbose
-  )
-  if (all(is.infinite(intra$results_by_init[, "nll"]))) {
-    stop("The optimization has failed for every initialization. Try increasing the number of initializations or checking your data.")
-  }
 
   outlist$inits <- intra$initializations
   outlist$results_by_init <- intra$results_by_init

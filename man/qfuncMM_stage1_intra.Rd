@@ -12,7 +12,7 @@ qfuncMM_stage1_intra(
   region_data,
   region_coords,
   kernel_type = "matern_5_2",
-  cov_setting = c("noisy", "diag_time", "noiseless", "noiseless_profiled"),
+  cov_setting = c("auto", "noisy", "noiseless"),
   out_file = NULL,
   overwrite = FALSE,
   num_init = 10L,
@@ -30,7 +30,7 @@ qfuncMM_stage1_intra(
 
 \item{kernel_type}{Choice of spatial kernel.}
 
-\item{cov_setting}{Choice of covariance structure.}
+\item{cov_setting}{Choice of covariance structure. Default option 'auto' chooses between 'noisy' and 'noiseless' based on model fit.}
 
 \item{out_file}{Output file path.}
 
