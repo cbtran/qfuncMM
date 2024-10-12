@@ -2,25 +2,31 @@
 % Please edit documentation in R/qfuncMM_stage1_intra.R
 \name{qfuncMM_stage1_intra}
 \alias{qfuncMM_stage1_intra}
-\title{Estimate functional connectivity from voxel-level BOLD signals. Run stage 1 intra-regional analysis.
+\title{Estimate functional connectivity from voxel-level BOLD signals. Run stage 1 intra-regional analysis for a single region.
   Results are saved to a JSON file.}
 \usage{
 qfuncMM_stage1_intra(
-  region_list,
-  voxel_coords,
+  subject_id,
+  region_uniqid,
+  region_name,
+  region_data,
+  region_coords,
   kernel_type = "matern_5_2",
   cov_setting = c("standard", "diag_time", "noiseless", "noiseless_profiled"),
-  out_file = ".",
+  out_file = NULL,
   overwrite = FALSE,
   num_init = 10L,
-  verbose = TRUE
+  verbose = FALSE
 )
 }
 \arguments{
-\item{region_list}{List of \eqn{M\times L_j} region matrices.}
+\item{subject_id}{Identifies the subject/exam.}
 
-\item{voxel_coords}{List specifying voxels for each region. Each item
-in the list is a \eqn{L_j \times 3} matrix of spatial coordinates.}
+\item{region_name}{Name of the region.}
+
+\item{region_data}{\eqn{M\times L_j} matrix}
+
+\item{region_coords}{\eqn{L_j \times 3} matrix of spatial coordinates.}
 
 \item{kernel_type}{Choice of spatial kernel.}
 
@@ -33,8 +39,10 @@ in the list is a \eqn{L_j \times 3} matrix of spatial coordinates.}
 \item{num_init}{Number of initializations for multi-start optimiization.}
 
 \item{verbose}{Print progress messages.}
+
+\item{region_uniqud}{Uniquely identifies the region for a given subject.}
 }
 \description{
-Estimate functional connectivity from voxel-level BOLD signals. Run stage 1 intra-regional analysis.
+Estimate functional connectivity from voxel-level BOLD signals. Run stage 1 intra-regional analysis for a single region.
   Results are saved to a JSON file.
 }

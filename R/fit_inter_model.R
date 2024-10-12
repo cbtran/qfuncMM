@@ -1,4 +1,6 @@
 #' Stage 2: Fit inter-regional model given pair of regions
+#'
+#' @noRd
 
 fit_inter_model <- function(
     region1_info,

@@ -30,7 +30,7 @@
 Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
                      const arma::mat &voxel_coords,
                      const arma::mat &time_sqrd_mat, int kernel_type_id,
-                     int cov_setting_id) {
+                     int cov_setting_id, bool verbose) {
   using namespace arma;
   // Necessary evil since we can't easily expose enums to R
   KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
@@ -69,7 +69,10 @@ Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
   // Run the optimization
   double optval;
   try {
-    optval = optimizer.Optimize(*opt_intra, theta_unrestrict, ens::Report(1));
+    if (verbose)
+      optval = optimizer.Optimize(*opt_intra, theta_unrestrict, ens::Report(1));
+    else
+      optval = optimizer.Optimize(*opt_intra, theta_unrestrict);
   } catch (std::runtime_error &re) {
     Rcpp::stop("Optimization failed " + std::string(re.what()));
   }

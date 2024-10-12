@@ -6,6 +6,7 @@
 #' @param kernel_type_id Choice of spatial kernel. Default "matern_5_2".
 #' @param cov_setting Choice of covariance structure.
 #' @param num_init Number of initializations to try
+#' @param verbose Print optimization results
 #' @return Esimated intra parameters and noise variance
 #'
 #' @noRd
@@ -16,7 +17,8 @@ fit_intra_model <- function(
     kernel_type_id = 3L,
     cov_setting = c("standard", "diag_time", "noiseless", "noiseless_profiled"),
     num_init = 1L,
-    init = NULL) {
+    init = NULL,
+    verbose = TRUE) {
   # Param list: phi, tau_gamma, k_gamma, nugget_gamma
   # param_init <- init
   # if (nugget_only) {
@@ -44,7 +46,7 @@ fit_intra_model <- function(
       {
         intra <- opt_intra(
           inits[init_num, ], matrix(region_mx, ncol = 1),
-          voxel_coords, time_sqrd_mat, kernel_type_id, cov_setting_dict(cov_setting)
+          voxel_coords, time_sqrd_mat, kernel_type_id, cov_setting_dict(cov_setting), verbose
         )
       },
       error = function(e) {

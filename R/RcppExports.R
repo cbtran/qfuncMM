@@ -32,8 +32,8 @@ NULL
 #' @param kernel_type_id Choice of spatial kernel
 #' @param setting Choice of covariance structure
 #' @noRd
-opt_intra <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, cov_setting_id) {
-    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, cov_setting_id)
+opt_intra <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, cov_setting_id, verbose) {
+    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, cov_setting_id, verbose)
 }
 
 eval_stage1_nll <- function(theta, X_region, voxel_coords, time_sqrd_mat, kernel_type_id) {
