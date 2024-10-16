@@ -6,10 +6,9 @@
 #' @param region_name Name of the region.
 #' @param region_data \eqn{M\times L_j} matrix
 #' @param region_coords \eqn{L_j \times 3} matrix of spatial coordinates.
+#' @param out_dir Output directory.
 #' @param kernel_type Choice of spatial kernel.
 #' @param cov_setting Choice of covariance structure. Default option 'auto' chooses between 'noisy' and 'noiseless' based on model fit.
-#' @param out_file Output file path.
-#' @param overwrite Overwrite output file if it exists.
 #' @param num_init Number of initializations for multi-start optimiization.
 #' @param verbose Print progress messages.
 #'
@@ -17,13 +16,12 @@
 #' @importFrom Rcpp sourceCpp
 #' @importFrom jsonlite toJSON
 #' @export
-qfuncMM_stage1_intra <- function(subject_id, region_uniqid, region_name, region_data, region_coords,
-                                 kernel_type = "matern_5_2",
-                                 cov_setting = c("auto", "noisy", "noiseless"),
-                                 out_file = NULL,
-                                 overwrite = FALSE,
-                                 num_init = 10L,
-                                 verbose = FALSE) {
+qfuncMM_stage1_intra <- function(
+    subject_id, region_uniqid, region_name, region_data, region_coords, out_dir,
+    kernel_type = "matern_5_2",
+    cov_setting = c("auto", "noisy", "noiseless"),
+    num_init = 10L,
+    verbose = FALSE) {
   region_uniqid <- as.integer(region_uniqid)
   region_name <- as.character(region_name)
   subject_id <- as.character(subject_id)
@@ -33,19 +31,13 @@ qfuncMM_stage1_intra <- function(subject_id, region_uniqid, region_name, region_
   log_var_ratio_threshold <- 5
   psi_threshold <- 0.5
 
-  if (is.null(out_file)) {
-    out_file <- file.path(
-      ".",
-      sprintf("qfuncMM_stage1_intra_region_%s_%d_%s.json", subject_id, region_uniqid, format(start_time, "%Y%m%d_%H%M%S"))
-    )
-  }
-  out_dir <- dirname(out_file)
   if (!file.info(out_dir)$isdir || file.access(out_dir, mode = 2) != 0) {
-    stop(sprintf("The specified output location '%s' is not in a valid, writeable directory.", out_file))
+    stop(sprintf("The specified output location '%s' is not in a valid, writeable directory.", out_dir))
   }
-  if (file.exists(out_file) && !overwrite) {
-    stop(sprintf("File '%s' already exists. Set overwrite = TRUE to overwrite.", out_file))
-  }
+  out_file <- file.path(
+    out_dir,
+    sprintf("qfuncMM_stage1_intra_region_%s_%d_%s.json", subject_id, region_uniqid, format(start_time, "%Y%m%d_%H%M%S"))
+  )
 
   n_timept <- nrow(region_data)
   n_voxel <- ncol(region_data)

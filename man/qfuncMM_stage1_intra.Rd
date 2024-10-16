@@ -11,10 +11,9 @@ qfuncMM_stage1_intra(
   region_name,
   region_data,
   region_coords,
+  out_dir,
   kernel_type = "matern_5_2",
   cov_setting = c("auto", "noisy", "noiseless"),
-  out_file = NULL,
-  overwrite = FALSE,
   num_init = 10L,
   verbose = FALSE
 )
@@ -28,13 +27,11 @@ qfuncMM_stage1_intra(
 
 \item{region_coords}{\eqn{L_j \times 3} matrix of spatial coordinates.}
 
+\item{out_dir}{Output directory.}
+
 \item{kernel_type}{Choice of spatial kernel.}
 
 \item{cov_setting}{Choice of covariance structure. Default option 'auto' chooses between 'noisy' and 'noiseless' based on model fit.}
-
-\item{out_file}{Output file path.}
-
-\item{overwrite}{Overwrite output file if it exists.}
 
 \item{num_init}{Number of initializations for multi-start optimiization.}
 
