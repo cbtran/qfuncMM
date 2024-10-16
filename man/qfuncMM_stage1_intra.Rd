@@ -15,6 +15,9 @@ qfuncMM_stage1_intra(
   kernel_type = "matern_5_2",
   cov_setting = c("auto", "noisy", "noiseless"),
   num_init = 10L,
+  noisy_num_init_tries = as.integer(num_init/2),
+  log_var_ratio_threshold = 5,
+  psi_threshold = 0.5,
   verbose = FALSE
 )
 }
@@ -34,6 +37,12 @@ qfuncMM_stage1_intra(
 \item{cov_setting}{Choice of covariance structure. Default option 'auto' chooses between 'noisy' and 'noiseless' based on model fit.}
 
 \item{num_init}{Number of initializations for multi-start optimiization.}
+
+\item{noisy_num_init_tries}{Number of initializations to try for the noisy model before switching to noiseless.}
+
+\item{log_var_ratio_threshold}{Threshold for log(var_ratio) to switch between 'noisy' and 'noiseless' models.}
+
+\item{psi_threshold}{Threshold for psi to switch between 'noisy' and 'noiseless' models.}
 
 \item{verbose}{Print progress messages.}
 

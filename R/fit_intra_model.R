@@ -1,24 +1,14 @@
-#' Stage 1: Fit intra-regional model for a single region
-#'
-#' @param region_mx Data matrix of signals of 1 region
-#' @param voxel_coords coordinates of voxels in the region
-#' @param time_sqrd_mat Temporal squared distance matrix
-#' @param kernel_type_id Choice of spatial kernel. Default "matern_5_2".
-#' @param cov_setting Choice of covariance structure.
-#' @param num_init Number of initializations to try
-#' @param verbose Print optimization results
-#' @return Esimated intra parameters and noise variance
+#' Stage 1: Fit intra-regional model for a single region over a list of initializations
 #'
 #' @noRd
 
 fit_intra_model <- function(
     region_mx,
     voxel_coords,
-    kernel_type_id = 3L,
+    inits,
+    kernel_type_id,
     cov_setting = c("noisy", "diag_time", "noiseless", "noiseless_profiled"),
-    num_init = 1L,
-    init = NULL,
-    verbose = TRUE) {
+    verbose = FALSE) {
   # Param list: phi, tau_gamma, k_gamma, nugget_gamma
   # param_init <- init
   # if (nugget_only) {
@@ -26,15 +16,8 @@ fit_intra_model <- function(
   # }
 
   cov_setting <- match.arg(cov_setting)
-
   m <- nrow(region_mx)
   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
-  inits <- NULL
-  if (is.null(init)) {
-    inits <- stage1_init(region_mx, voxel_coords, num_init, cov_setting == "noiseless_profiled")
-  } else {
-    inits <- matrix(init, nrow = 1)
-  }
   n_init <- nrow(inits)
 
   best_intra <- NULL

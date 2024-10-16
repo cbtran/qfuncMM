@@ -10,6 +10,9 @@
 #' @param kernel_type Choice of spatial kernel.
 #' @param cov_setting Choice of covariance structure. Default option 'auto' chooses between 'noisy' and 'noiseless' based on model fit.
 #' @param num_init Number of initializations for multi-start optimiization.
+#' @param noisy_num_init_tries Number of initializations to try for the noisy model before switching to noiseless.
+#' @param log_var_ratio_threshold Threshold for log(var_ratio) to switch between 'noisy' and 'noiseless' models.
+#' @param psi_threshold Threshold for psi to switch between 'noisy' and 'noiseless' models.
 #' @param verbose Print progress messages.
 #'
 #' @useDynLib qfuncMM
@@ -21,6 +24,9 @@ qfuncMM_stage1_intra <- function(
     kernel_type = "matern_5_2",
     cov_setting = c("auto", "noisy", "noiseless"),
     num_init = 10L,
+    noisy_num_init_tries = as.integer(num_init / 2),
+    log_var_ratio_threshold = 5,
+    psi_threshold = 0.5,
     verbose = FALSE) {
   region_uniqid <- as.integer(region_uniqid)
   region_name <- as.character(region_name)
@@ -28,9 +34,21 @@ qfuncMM_stage1_intra <- function(
   start_time <- Sys.time()
   kernel_type_id <- kernel_dict(kernel_type)
   cov_setting <- match.arg(cov_setting)
-  log_var_ratio_threshold <- 5
-  psi_threshold <- 0.5
+  stopifnot(num_init >= 1L)
+  if (noisy_num_init_tries > num_init || cov_setting != "auto") {
+    noisy_num_init_tries <- num_init
+  }
 
+  bad_noisy_fit <- function(intra_result) {
+    log_var_ratio <- log(intra_result$intra_param["k_gamma"] + intra_result$intra_param["nugget_gamma"])
+    psi <- intra_result$intra_param["psi"]
+    noiseless_better <- log_var_ratio > log_var_ratio_threshold || psi >= psi_threshold
+    return(c(noiseless_better, log_var_ratio, psi))
+  }
+
+  if (!dir.exists(out_dir)) {
+    dir.create(out_dir)
+  }
   if (!file.info(out_dir)$isdir || file.access(out_dir, mode = 2) != 0) {
     stop(sprintf("The specified output location '%s' is not in a valid, writeable directory.", out_dir))
   }
@@ -50,32 +68,57 @@ qfuncMM_stage1_intra <- function(
 
   # Standardize the data matrices
   region_data_std <- (region_data - mean(region_data)) / stats::sd(region_data)
+  inits <- stage1_init(region_data_std, region_coords, num_init, FALSE)
 
   if (cov_setting %in% c("auto", "noisy")) {
     message("Fitting noisy model...")
     intra <- fit_intra_model(
       region_data_std,
       region_coords,
+      inits[seq(1, noisy_num_init_tries), ],
       kernel_type_id,
       "noisy",
-      num_init,
       verbose = verbose
     )
     if (all(is.infinite(intra$results_by_init[, "nll"]))) {
       stop("The optimization has failed for every initialization. Try increasing the number of initializations or checking your data.")
     }
     if (cov_setting == "auto") {
-      message("Checking model fit")
-      var_ratio <- log(intra$intra_param["k_gamma"] + intra$intra_param["nugget_gamma"])
-      if (var_ratio > log_var_ratio_threshold || intra$intra_param["psi"] >= psi_threshold) {
+      message(sprintf("Checking model fit over %d noisy inits...", noisy_num_init_tries))
+      init_check <- bad_noisy_fit(intra)
+      if (init_check[1]) {
         cov_setting <- "noiseless"
+        message(sprintf(
+          "Model fit: log(var_ratio) = %.3f, psi = %.3f. Choosing %s model.",
+          init_check[2], init_check[3], cov_setting
+        ))
       } else {
-        cov_setting <- "noisy"
+        message(sprintf("Running remaining %d noisy inits...", num_init - noisy_num_init_tries))
+        intra2 <- fit_intra_model(
+          region_data_std,
+          region_coords,
+          inits[seq(noisy_num_init_tries + 1, num_init), ],
+          kernel_type_id,
+          "noisy",
+          verbose = verbose
+        )
+        intra$initializations <- rbind(intra$initializations, intra2$initializations)
+        intra$results_by_init <- rbind(intra$results_by_init, intra2$results_by_init)
+        intra$intra_param <- `if`(intra$objval < intra2$objval, intra$intra_param, intra2$intra_param)
+        intra$eblue <- `if`(intra$objval < intra2$objval, intra$eblue, intra2$eblue)
+        intra$objval <- min(intra$objval, intra2$objval)
+
+        init_check <- bad_noisy_fit(intra)
+        if (init_check[1]) {
+          cov_setting <- "noiseless"
+        } else {
+          cov_setting <- "noisy"
+        }
+        message(sprintf(
+          "Model fit: log(var_ratio) = %.3f, psi = %.3f. Choosing %s model.",
+          init_check[2], init_check[3], cov_setting
+        ))
       }
-      message(sprintf(
-        "Model fit: var_ratio = %.3f, psi = %.3f. Choosing %s model.",
-        var_ratio, intra$intra_param["psi"], cov_setting
-      ))
     }
   }
   if (cov_setting == "noiseless") {
@@ -83,9 +126,9 @@ qfuncMM_stage1_intra <- function(
     intra <- fit_intra_model(
       region_data_std,
       region_coords,
+      inits,
       kernel_type_id,
       "noiseless",
-      num_init,
       verbose = verbose
     )
     if (all(is.infinite(intra$results_by_init[, "nll"]))) {
