@@ -174,7 +174,7 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
                      const arma::mat &time_sqrd_mat,
                      const arma::vec &stage1ParamsRegion1,
                      const arma::vec &stage1ParamsRegion2, int cov_setting_id1,
-                     int cov_setting_id2, int kernel_type_id) {
+                     int cov_setting_id2, int kernel_type_id, bool verbose) {
   using arma::mat;
   using arma::vec;
 
@@ -228,12 +228,12 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
   optimizer.MinGradientNorm() = 1e-4;
 
   ens::StoreBestCoordinates<mat> cb;
-  optimizer.Optimize(*opt_inter, theta_vec, ens::GradClipByNorm(100),
-                     StatusCallback(any_diag_time), ens::Report(1), cb);
-
-  // Rcpp::Rcout << "NegLL Final: " << std::setprecision(10) <<
-  // cb.BestObjective()
-  //             << std::endl;
+  if (verbose) {
+    optimizer.Optimize(*opt_inter, theta_vec, ens::GradClipByNorm(100),
+                       ens::Report(1), cb);
+  } else {
+    optimizer.Optimize(*opt_inter, theta_vec, ens::GradClipByNorm(100), cb);
+  }
 
   vec best(cb.BestCoordinates());
   vec result(5);

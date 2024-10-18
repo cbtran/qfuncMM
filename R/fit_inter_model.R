@@ -2,12 +2,7 @@
 #'
 #' @noRd
 
-fit_inter_model <- function(
-    region1_info,
-    region2_info,
-    time_sqrd_mat,
-    kernel_type_id,
-    rho_init) {
+fit_inter_model <- function(region1_info, region2_info, kernel_type_id, rho_init, verbose) {
   softminus <- function(x) {
     log(exp(x) - 1)
   }
@@ -16,6 +11,9 @@ fit_inter_model <- function(
     x <- (x - lower) / (upper - lower)
     return(log(x) - log(1 - x))
   }
+
+  m <- length(region1_info$eblue)
+  time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
 
   # Use the EBLUE as a reasonable initialization.
   init <- c(logit(rho_init, -1, 1), softminus(1), softminus(1), 0, softminus(0.1))
@@ -34,10 +32,11 @@ fit_inter_model <- function(
     stage1ParamsRegion2 = unlist(region2_info$stage1),
     cov_setting_id1 = cov_setting_dict(region1_info$cov_setting),
     cov_setting_id2 = cov_setting_dict(region2_info$cov_setting),
-    kernel_type_id = kernel_type_id
+    kernel_type_id = kernel_type_id,
+    verbose = verbose
   )
 
-  params <- result$theta
-  names(params) <- c("rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta")
-  return(params = params)
+  stage2 <- result$theta
+  names(stage2) <- c("rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta")
+  return(stage2)
 }

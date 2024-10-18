@@ -2,7 +2,9 @@
 
 export(qfuncMM)
 export(qfuncMM_stage1_intra)
+export(qfuncMM_stage2_inter)
 importFrom(Rcpp,sourceCpp)
+importFrom(jsonlite,read_json)
 importFrom(jsonlite,toJSON)
 importFrom(stats,cor)
 importFrom(stats,dist)

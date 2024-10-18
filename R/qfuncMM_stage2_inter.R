@@ -1,0 +1,86 @@
+#' Estimate functional connectivity from voxel-level BOLD signals. Run stage 2 inter-regional analysis for a pair of regions.
+#'   Results are saved to a JSON file.
+#'
+#' @param stage1_region1_outfile Output JSON file from stage 1 for region 1.
+#' @param stage1_region2_outfile Output JSON file from stage 1 for region 2.
+#' @param out_dir Output directory.
+#' @param kernel_type Choice of spatial kernel.
+#' @param overwrite Overwrite existing output file.
+#' @param verbose Print progress messages.
+#'
+#' @useDynLib qfuncMM
+#' @importFrom Rcpp sourceCpp
+#' @importFrom jsonlite toJSON read_json
+#' @export
+qfuncMM_stage2_inter <- function(
+    stage1_region1_outfile, stage1_region2_outfile, out_dir,
+    kernel_type = "matern_5_2", overwrite = FALSE, verbose = FALSE) {
+  kernel_type_id <- kernel_dict(kernel_type)
+
+  if (!dir.exists(out_dir)) {
+    dir.create(out_dir)
+  }
+  if (!file.info(out_dir)$isdir || file.access(out_dir, mode = 2) != 0) {
+    stop(sprintf("The specified output location '%s' is not in a valid, writeable directory.", out_dir))
+  }
+
+  j1 <- jsonlite::read_json(stage1_region1_outfile, simplifyVector = TRUE)
+  if (j1$stage1$var_noise == "NA") {
+    j1$stage1$var_noise <- NA
+  }
+  j2 <- jsonlite::read_json(stage1_region2_outfile, simplifyVector = TRUE)
+  if (j2$stage1$var_noise == "NA") {
+    j2$stage1$var_noise <- NA
+  }
+  if (j1$subject_id != j2$subject_id) {
+    stop(sprintf(
+      "Mismatched subject IDs '%s' and '%s'. The two regions must be from the same subject and exam.",
+      j1$subject_id, j2$subject_id
+    ))
+  }
+  if (j1$region_uniqid == j2$region_uniqid) {
+    stop(sprintf("Both regions have unique id '%d'. Regions must be different.", j1$region_uniqid))
+  }
+
+  out_file <- file.path(
+    out_dir,
+    sprintf("qfuncMM_stage2_inter_%s_%d-%d.json", j1$subject_id, j1$region_uniqid, j2$region_uniqid)
+  )
+
+  if (file.exists(out_file) && !overwrite) {
+    stop(sprintf("Output file '%s' already exists. Set 'overwrite' to TRUE to overwrite.", out_file))
+  }
+
+  start_time <- Sys.time()
+  rho_eblue <- stats::cor(j1$eblue, j2$eblue)
+  rho_ca <- stats::cor(rowMeans(j1$data_std), rowMeans(j2$data_std))
+
+  message(sprintf(
+    "Running QFunCMM stage 2 inter-regional for subject '%s' region pair (%d, %d)...",
+    j1$subject_id, j1$region_uniqid, j2$region_uniqid
+  ))
+
+  stage2 <- fit_inter_model(j1, j2, kernel_type_id, rho_eblue, verbose)
+
+  outlist <- list(
+    subject_id = j1$subject_id,
+    region1_uniqid = j1$region_uniqid, region1_name = j1$region_name,
+    region2_uniqid = j2$region_uniqid, region2_name = j2$region_name,
+    spatial_kernel = kernel_type,
+    start_time = format(start_time, "%Y-%m-%dT%H:%M:%OS3Z"),
+    end_time = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z"),
+    rho = stage2["rho"],
+    rho_eblue = rho_eblue,
+    rho_ca = rho_ca,
+    stage2 = stage2[setdiff(names(stage2), "rho")]
+  )
+  out_json <- jsonlite::toJSON(outlist, auto_unbox = TRUE, pretty = TRUE, digits = I(10))
+  write(out_json, out_file)
+  message(
+    sprintf(
+      "Subject '%s' region pair (%d, %d): Finished stage 2 inter-regional. \nResults saved to ",
+      j1$subject_id, j1$region_uniqid, j2$region_uniqid
+    ),
+    normalizePath(out_file)
+  )
+}

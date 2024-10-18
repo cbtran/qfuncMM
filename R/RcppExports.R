@@ -55,7 +55,7 @@ eval_stage1_nll <- function(theta, X_region, voxel_coords, time_sqrd_mat, kernel
 #'   var_noise: Estimated noise variance
 #'   objective: optimal loss (negiatve log-likelihood) found.
 #' @noRd
-opt_inter <- function(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, cov_setting_id1, cov_setting_id2, kernel_type_id) {
-    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, cov_setting_id1, cov_setting_id2, kernel_type_id)
+opt_inter <- function(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, cov_setting_id1, cov_setting_id2, kernel_type_id, verbose) {
+    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, cov_setting_id1, cov_setting_id2, kernel_type_id, verbose)
 }
 

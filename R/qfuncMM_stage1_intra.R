@@ -33,7 +33,6 @@ qfuncMM_stage1_intra <- function(
   region_uniqid <- as.integer(region_uniqid)
   region_name <- as.character(region_name)
   subject_id <- as.character(subject_id)
-  start_time <- Sys.time()
   kernel_type_id <- kernel_dict(kernel_type)
   cov_setting <- match.arg(cov_setting)
   stopifnot(num_init >= 1L)
@@ -67,10 +66,11 @@ qfuncMM_stage1_intra <- function(
   stopifnot(n_voxel == nrow(region_coords))
 
   message(sprintf(
-    "Running QFunCMM stage 1 intra-regional for region %d-'%s' with %d voxels and %d time points using %d inits.",
+    "Running QFunCMM stage 1 intra-regional for region %d-'%s' with %d voxels and %d time points using %d inits...",
     region_uniqid, region_name, n_voxel, n_timept, num_init
   ))
 
+  start_time <- Sys.time()
   # Standardize the data matrices
   region_data_std <- (region_data - mean(region_data)) / stats::sd(region_data)
   inits <- stage1_init(region_data_std, region_coords, num_init, FALSE)
