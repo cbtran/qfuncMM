@@ -1,7 +1,7 @@
 Package: qfuncMM
 Type: Package
 Title: Mixed-effects Model for Estimating Functional Connectivity
-Version: 0.2.0
+Version: 0.3.0
 Date: 2023-12-20
 Authors@R: c(
     person("Robin", "Liu", , "r_liu@pstat.ucsb.edu", role = c("aut", "cre")),

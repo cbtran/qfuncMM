@@ -1,22 +1,25 @@
-#' Estimate functional connectivity from voxel-level BOLD signals.
+#' Run both stage 1 and stage 2 for QFuncMM. This is a convenience function for small brain regions and testing.
+#' Larger applications should use `qfuncMM_stage1_intra` and `qfuncMM_stage2_inter` separately.
 #'
 #' @param region_list List of \eqn{M\times L_j} region matrices.
 #' @param voxel_coords List specifying voxels for each region. Each item
 #'   in the list is a \eqn{L_j \times 3} matrix of spatial coordinates.
-#' @param kernel_type Choice of spatial kernel. Default "matern_5_2".
-#' @param cov_setting Choice of covariance structure.
+#' @param kernel_type Choice of spatial kernel.
+#' @param stage1_cov_setting Choice of noisy or noiseless stage 1 model.
+#' @param num_init Number of stage 1 initializations to use.
 #' @param verbose Print progress messages.
 #'
 #' @useDynLib qfuncMM
 #' @importFrom Rcpp sourceCpp
 #' @importFrom stats cor dist
 #' @export
-qfuncMM <- function(region_list, voxel_coords,
-                    kernel_type = "matern_5_2",
-                    cov_setting = c("noisy", "diag_time", "noiseless", "noiseless_profiled"),
-                    verbose = TRUE) {
+qfuncMM_fullrun_small_regions <- function(region_list, voxel_coords,
+                                          kernel_type = "matern_5_2",
+                                          stage1_cov_setting = c("noisy", "noiseless"),
+                                          num_init = 10L,
+                                          verbose = FALSE) {
   kernel_type_id <- kernel_dict(kernel_type)
-  cov_setting <- match.arg(cov_setting)
+  stage1_cov_setting <- match.arg(stage1_cov_setting)
 
   # TODO: split validation into a separate function
   if (length(region_list) == 0) {
@@ -48,31 +51,8 @@ qfuncMM <- function(region_list, voxel_coords,
     }
   }
 
-  if (verbose) {
-    message(
-      "Running QFunCMM with ", n_region, " regions and ",
-      n_timept, " time points."
-    )
-  }
-
-  time_sqrd_mat <- outer(seq_len(n_timept), seq_len(n_timept), `-`)^2
-
-  # stage1_regional <- matrix(
-  #   nrow = n_region, ncol = 5,
-  #   dimnames = list(
-  #     paste0("r", seq_len(n_region)),
-  #     c(
-  #       "phi_gamma", "tau_gamma",
-  #       "k_gamma", "nugget_gamma",
-  #       "var_noise"
-  #     )
-  #   )
-  # )
-  # stage1_eblue <- matrix(nrow = n_region, ncol = n_timept)
-
-  if (verbose) {
-    message("Stage 1: estimating intra-regional parameters...")
-  }
+  message("Running QFunCMM with ", n_region, " regions and ", n_timept, " time points.")
+  message("Stage 1: estimating intra-regional parameters...")
 
   # Standardize the data matrices
   # TODO: Should we keep the raw data matrices around?
@@ -80,30 +60,22 @@ qfuncMM <- function(region_list, voxel_coords,
   stage1_info <- vector("list", length = n_region)
 
   for (regid in seq_along(region_list_std)) {
+    inits <- stage1_init(region_list_std[[regid]], voxel_coords[[regid]], num_init, FALSE)
     intra_out <- fit_intra_model(
-      region_list_std[[regid]],
-      voxel_coords[[regid]],
-      kernel_type_id,
-      cov_setting,
-      num_init = 10
+      region_list_std[[regid]], voxel_coords[[regid]], inits, kernel_type_id, stage1_cov_setting, verbose
     )
 
     stage1_region_info <- list()
-    stage1_region_info$intra_param <- intra_out$intra_param
+    stage1_region_info$stage1 <- intra_out$intra_param
     stage1_region_info$eblue <- intra_out$eblue
-    stage1_region_info$data <- region_list_std[[regid]]
+    stage1_region_info$data_std <- region_list_std[[regid]]
     stage1_region_info$coords <- voxel_coords[[regid]]
-    stage1_region_info$cov_setting <- cov_setting
+    stage1_region_info$cov_setting <- stage1_cov_setting
     stage1_info[[regid]] <- stage1_region_info
   }
 
   if (verbose) {
-    message("Finished stage 1.\n")
-  }
-
-  # Matrix of asymptotic variances for region pairs
-  if (verbose) {
-    message("Stage 2: estimating inter-regional correlations...")
+    message("Finished stage 1.\nStage 2: estimating inter-regional correlations...")
   }
 
   region_dimnames <- list(
@@ -145,7 +117,7 @@ qfuncMM <- function(region_list, voxel_coords,
       rho_ca[reg2, reg1] <- ca
 
       stage2_result <- fit_inter_model(
-        stage1_info[[reg1]], stage1_info[[reg2]], time_sqrd_mat, kernel_type_id, eblue_r12
+        stage1_info[[reg1]], stage1_info[[reg2]], kernel_type_id, eblue_r12, verbose
       )
       rho[reg1, reg2] <- stage2_result["rho"]
       rho[reg2, reg1] <- stage2_result["rho"]
@@ -158,6 +130,6 @@ qfuncMM <- function(region_list, voxel_coords,
   if (verbose) {
     message("Finished stage 2.")
   }
-  stage1_regional <- do.call(rbind, lapply(stage1_info, \(x) x$intra_param))
+  stage1_regional <- do.call(rbind, lapply(stage1_info, \(x) x$stage))
   list(rho = rho, rho_eblue = rho_eblue, rho_ca = rho_ca, stage1 = stage1_regional, stage2 = stage2_inter)
 }
