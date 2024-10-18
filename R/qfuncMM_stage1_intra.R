@@ -2,7 +2,7 @@
 #'   Results are saved to a JSON file.
 #'
 #' @param subject_id Identifies the subject/exam.
-#' @param region_uniqud Uniquely identifies the region for a given subject.
+#' @param region_uniqid Uniquely identifies the region for a given subject.
 #' @param region_name Name of the region.
 #' @param region_data \eqn{M\times L_j} matrix
 #' @param region_coords \eqn{L_j \times 3} matrix of spatial coordinates.
@@ -35,7 +35,7 @@ qfuncMM_stage1_intra <- function(
   kernel_type_id <- kernel_dict(kernel_type)
   cov_setting <- match.arg(cov_setting)
   stopifnot(num_init >= 1L)
-  if (noisy_num_init_tries > num_init || cov_setting != "auto") {
+  if (noisy_num_init_tries > num_init || cov_setting != "auto" || num_init == 1L) {
     noisy_num_init_tries <- num_init
   }
 
@@ -75,7 +75,7 @@ qfuncMM_stage1_intra <- function(
     intra <- fit_intra_model(
       region_data_std,
       region_coords,
-      inits[seq(1, noisy_num_init_tries), ],
+      inits[seq(1, noisy_num_init_tries), , drop = FALSE],
       kernel_type_id,
       "noisy",
       verbose = verbose
@@ -88,6 +88,12 @@ qfuncMM_stage1_intra <- function(
       init_check <- bad_noisy_fit(intra)
       if (init_check[1]) {
         cov_setting <- "noiseless"
+        message(sprintf(
+          "Model fit: log(var_ratio) = %.3f, psi = %.3f. Choosing %s model.",
+          init_check[2], init_check[3], cov_setting
+        ))
+      } else if (num_init == 1L) {
+        cov_setting <- "noisy"
         message(sprintf(
           "Model fit: log(var_ratio) = %.3f, psi = %.3f. Choosing %s model.",
           init_check[2], init_check[3], cov_setting

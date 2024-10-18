@@ -24,6 +24,8 @@ qfuncMM_stage1_intra(
 \arguments{
 \item{subject_id}{Identifies the subject/exam.}
 
+\item{region_uniqid}{Uniquely identifies the region for a given subject.}
+
 \item{region_name}{Name of the region.}
 
 \item{region_data}{\eqn{M\times L_j} matrix}
@@ -45,8 +47,6 @@ qfuncMM_stage1_intra(
 \item{psi_threshold}{Threshold for psi to switch between 'noisy' and 'noiseless' models.}
 
 \item{verbose}{Print progress messages.}
-
-\item{region_uniqud}{Uniquely identifies the region for a given subject.}
 }
 \description{
 Estimate functional connectivity from voxel-level BOLD signals. Run stage 1 intra-regional analysis for a single region.
