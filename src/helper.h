@@ -1,7 +1,6 @@
 #ifndef HELPER_H
 #define HELPER_H
 #include <RcppArmadillo.h>
-#include "get_cor_mat.h"
 // [[Rcpp::depends(RcppArmadillo)]]
 
 //' @title Kronecker matrix-vector product (Steeb & Hardy, 2011)
@@ -10,24 +9,23 @@
 //' @param B Right matrix
 //' @param v vector
 //' @return Kronecker matrix-vector product
-//' @references Willi-Hans Steeb and Yorick Hardy. Matrix calculus and Kronecker product: a practical approach to linear and multilinear algebra. World Scientific Publishing Company, 2011.
 //' @noRd
-arma::vec kronecker_mvm(
-  const arma::mat& A, const arma::mat& B, const arma::vec& v);
+arma::vec kronecker_mvm(const arma::mat &A, const arma::mat &B,
+                        const arma::vec &v, bool eye_B = false);
 
 // Kronecker matrix-matrix product using kronecker structure
-arma::mat kronecker_mmm(
-  const arma::mat& A, const arma::mat& B, const arma::mat& C);
-
+arma::mat kronecker_mmm(const arma::mat &A, const arma::mat &B,
+                        const arma::mat &C, bool eye_B = false);
 
 // Get squared distance matrix given the voxel coordinates for a region
 arma::mat squared_distance(arma::mat coords);
 
-// Forward-backward to solve linear system \eqn{R^{-1} * B = Z} with Cholesky decomposition
+// Forward-backward to solve linear system \eqn{R^{-1} * B = Z} with Cholesky
+// decomposition
 // @param R_chol Cholesky decomposition of Matrix R
 // @param B Matrix to solve against
 // @return solution Z of \eqn{z = R^{-1}b}
-arma::mat R_inv_B(const arma::mat& R_chol, const arma::mat& B);
+arma::mat R_inv_B(const arma::mat &R_chol, const arma::mat &B);
 
 // Compute softplus
 // @param x scalar
@@ -59,25 +57,20 @@ double logistic(double x);
 // @param lower: scalar lower bound
 // @param upper: scalar upper bound
 // @return constrained scalar x with bound [lower, upper]
-double sigmoid_inv(double y,
-                   double lower,
-                   double upper);
+double sigmoid_inv(double y, double lower, double upper);
 
-// Compute derivative dx/dy with unconstrained y and constrained and x with bound [lower, upper]
+// Compute derivative dx/dy with unconstrained y and constrained and x with
+// bound [lower, upper]
 // @param unconstrained scalar y
 // @param lower: scalar lower bound
 // @param upper: scalar upper bound
 // @return derivative dx/dy with constraint x with bound [lower, upper]
-double sigmoid_inv_derivative(double y,
-                              double lower,
-                              double upper);
+double sigmoid_inv_derivative(double y, double lower, double upper);
 
 // Compute asymptotic variance (inverse of Fisher information) of REML estimator
-Rcpp::List asymptotic_variance(const arma::mat& SingleRegionMatrix_1,
-                               const arma::mat& SingleRegionMatrix_2,
-                               const arma::mat& timeSqrd_mat,
-                               int L_1, int L_2, int M,
-                               double kEta, double tauEta, double nugget,
-                               double rho,
-                               const arma::mat& Z);
+Rcpp::List asymptotic_variance(const arma::mat &SingleRegionMatrix_1,
+                               const arma::mat &SingleRegionMatrix_2,
+                               const arma::mat &timeSqrd_mat, int L_1, int L_2,
+                               int M, double kEta, double tauEta, double nugget,
+                               double rho, const arma::mat &Z);
 #endif

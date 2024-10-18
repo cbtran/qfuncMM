@@ -20,7 +20,6 @@ NULL
 #' @param B Right matrix
 #' @param v vector
 #' @return Kronecker matrix-vector product
-#' @references Willi-Hans Steeb and Yorick Hardy. Matrix calculus and Kronecker product: a practical approach to linear and multilinear algebra. World Scientific Publishing Company, 2011.
 #' @noRd
 NULL
 

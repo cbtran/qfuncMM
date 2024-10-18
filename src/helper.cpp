@@ -7,20 +7,23 @@
 // V is a matrix reshaped from v. This is more efficient than computing
 // the kronecker product directly.
 arma::vec kronecker_mvm(const arma::mat &A, const arma::mat &B,
-                        const arma::vec &v) {
+                        const arma::vec &v, bool eye_B) {
   arma::mat V_mat(v);
   V_mat.reshape(B.n_cols, A.n_cols);
+  if (eye_B) {
+    return arma::vectorise(V_mat * A.t());
+  }
   return arma::vectorise(B * V_mat * A.t());
 }
 
 // This function computes (A \otimes B) * C
 // by applying the vec-trick to each column of C.
 arma::mat kronecker_mmm(const arma::mat &A, const arma::mat &B,
-                        const arma::mat &C) {
+                        const arma::mat &C, bool eye_B) {
   arma::mat V(C.n_rows, C.n_cols);
   int n_cols = C.n_cols;
   for (int i = 0; i < n_cols; i++) {
-    V.col(i) = kronecker_mvm(A, B, C.col(i));
+    V.col(i) = kronecker_mvm(A, B, C.col(i), eye_B);
   }
 
   return V;

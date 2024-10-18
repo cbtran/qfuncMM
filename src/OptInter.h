@@ -11,9 +11,9 @@ protected:
   int numVoxelRegion1_, numVoxelRegion2_;
   int numTimePt_;
   const arma::mat &spaceTimeKernelRegion1_, &spaceTimeKernelRegion2_;
-  const arma::mat &timeSqrd_;
   std::pair<double, double> sigma2_;
   CovSetting cov_setting_region1_, cov_setting_region2_;
+  const arma::mat &timeSqrd_;
 
 public:
   IOptInter(const arma::mat &dataRegion1, const arma::mat &dataRegion2,

@@ -25,13 +25,13 @@ fit_inter_model <- function(
 
   result <- opt_inter(
     theta_init = init,
-    dataRegion1 = region1_info$data,
-    dataRegion2 = region2_info$data,
+    dataRegion1 = region1_info$data_std,
+    dataRegion2 = region2_info$data_std,
     voxel_coords_1 = region1_info$coords,
     voxel_coords_2 = region2_info$coords,
     time_sqrd_mat = time_sqrd_mat,
-    stage1ParamsRegion1 = region1_info$intra_param,
-    stage1ParamsRegion2 = region2_info$intra_param,
+    stage1ParamsRegion1 = unlist(region1_info$stage1),
+    stage1ParamsRegion2 = unlist(region2_info$stage1),
     cov_setting_id1 = cov_setting_dict(region1_info$cov_setting),
     cov_setting_id2 = cov_setting_dict(region2_info$cov_setting),
     kernel_type_id = kernel_type_id
