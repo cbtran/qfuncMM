@@ -13,6 +13,7 @@
 #' @param noisy_num_init_tries Number of initializations to try for the noisy model before switching to noiseless.
 #' @param log_var_ratio_threshold Threshold for log(var_ratio) to switch between 'noisy' and 'noiseless' models.
 #' @param psi_threshold Threshold for psi to switch between 'noisy' and 'noiseless' models.
+#' @param overwrite Overwrite existing output file.
 #' @param verbose Print progress messages.
 #'
 #' @useDynLib qfuncMM
@@ -27,6 +28,7 @@ qfuncMM_stage1_intra <- function(
     noisy_num_init_tries = as.integer(num_init / 2),
     log_var_ratio_threshold = 5,
     psi_threshold = 0.5,
+    overwrite = FALSE,
     verbose = FALSE) {
   region_uniqid <- as.integer(region_uniqid)
   region_name <- as.character(region_name)
@@ -54,8 +56,11 @@ qfuncMM_stage1_intra <- function(
   }
   out_file <- file.path(
     out_dir,
-    sprintf("qfuncMM_stage1_intra_region_%s_%d_%s.json", subject_id, region_uniqid, format(start_time, "%Y%m%d_%H%M%S"))
+    sprintf("qfuncMM_stage1_intra_region_%s_%d.json", subject_id, region_uniqid)
   )
+  if (file.exists(out_file) && !overwrite) {
+    stop(sprintf("Output file '%s' already exists. Set 'overwrite' to TRUE to overwrite.", out_file))
+  }
 
   n_timept <- nrow(region_data)
   n_voxel <- ncol(region_data)
