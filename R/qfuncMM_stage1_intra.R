@@ -149,17 +149,17 @@ qfuncMM_stage1_intra <- function(
 
   outlist <- list(
     region_uniqid = region_uniqid, region_name = region_name, subject_id = subject_id,
+    num_voxels = n_voxel, num_timepoints = n_timept,
     cov_setting = cov_setting, kernel_type = kernel_type,
     start_time = format(start_time, "%Y-%m-%dT%H:%M:%OS3Z"),
-    end_time = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z")
+    run_time_minutes = round(as.numeric(difftime(Sys.time(), start_time, units = "mins")), 5),
+    inits = intra$initializations,
+    results_by_init = intra$results_by_init,
+    stage1 = as.list(intra$intra_param),
+    eblue = as.numeric(intra$eblue),
+    data_std = region_data_std,
+    coords = region_coords
   )
-
-  outlist$inits <- intra$initializations
-  outlist$results_by_init <- intra$results_by_init
-  outlist$stage1 <- as.list(intra$intra_param)
-  outlist$eblue <- as.numeric(intra$eblue)
-  outlist$data_std <- region_data_std
-  outlist$coords <- region_coords
 
   out_json <- jsonlite::toJSON(outlist, auto_unbox = TRUE, pretty = TRUE, digits = I(10))
   write(out_json, out_file)

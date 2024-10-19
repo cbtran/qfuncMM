@@ -1,8 +1,8 @@
 #' Estimate functional connectivity from voxel-level BOLD signals. Run stage 2 inter-regional analysis for a pair of regions.
 #'   Results are saved to a JSON file.
 #'
-#' @param stage1_region1_outfile Output JSON file from stage 1 for region 1.
-#' @param stage1_region2_outfile Output JSON file from stage 1 for region 2.
+#' @param stage1_region1_outfile JSON file from stage 1 for region 1.
+#' @param stage1_region2_outfile JSON file from stage 1 for region 2.
 #' @param out_dir Output directory.
 #' @param kernel_type Choice of spatial kernel.
 #' @param overwrite Overwrite existing output file.
@@ -66,14 +66,17 @@ qfuncMM_stage2_inter <- function(
     subject_id = j1$subject_id,
     region1_uniqid = j1$region_uniqid, region1_name = j1$region_name,
     region2_uniqid = j2$region_uniqid, region2_name = j2$region_name,
+    region1_num_voxel = ncol(j1$data_std), region2_num_voxel = ncol(j2$data_std),
+    num_timept = length(j1$eblue),
     spatial_kernel = kernel_type,
     start_time = format(start_time, "%Y-%m-%dT%H:%M:%OS3Z"),
-    end_time = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3Z"),
-    rho = stage2["rho"],
-    rho_eblue = rho_eblue,
-    rho_ca = rho_ca,
-    stage2 = stage2[setdiff(names(stage2), "rho")]
+    run_time_minutes = round(as.numeric(difftime(Sys.time(), start_time, units = "mins")), 5)
   )
+  outlist$stage2 <-
+    c(
+      list(rho = stage2["rho"], rho_eblue = rho_eblue, rho_ca = rho_ca),
+      as.list(stage2[setdiff(names(stage2), "rho")])
+    )
   out_json <- jsonlite::toJSON(outlist, auto_unbox = TRUE, pretty = TRUE, digits = I(10))
   write(out_json, out_file)
   message(

@@ -15,9 +15,9 @@ qfuncMM_stage2_inter(
 )
 }
 \arguments{
-\item{stage1_region1_outfile}{Output JSON file from stage 1 for region 1.}
+\item{stage1_region1_outfile}{JSON file from stage 1 for region 1.}
 
-\item{stage1_region2_outfile}{Output JSON file from stage 1 for region 2.}
+\item{stage1_region2_outfile}{JSON file from stage 1 for region 2.}
 
 \item{out_dir}{Output directory.}
 
