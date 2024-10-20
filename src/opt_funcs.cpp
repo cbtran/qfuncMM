@@ -229,10 +229,9 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
 
   ens::StoreBestCoordinates<mat> cb;
   if (verbose) {
-    optimizer.Optimize(*opt_inter, theta_vec, ens::GradClipByNorm(100),
-                       ens::Report(1), cb);
+    optimizer.Optimize(*opt_inter, theta_vec, ens::Report(1), cb);
   } else {
-    optimizer.Optimize(*opt_inter, theta_vec, ens::GradClipByNorm(100), cb);
+    optimizer.Optimize(*opt_inter, theta_vec, cb);
   }
 
   vec best(cb.BestCoordinates());
