@@ -119,9 +119,10 @@ qfuncMM_fullrun_small_regions <- function(region_list, voxel_coords,
       stage2_result <- fit_inter_model(
         stage1_info[[reg1]], stage1_info[[reg2]], kernel_type_id, eblue_r12, verbose
       )
-      rho[reg1, reg2] <- stage2_result["rho"]
-      rho[reg2, reg1] <- stage2_result["rho"]
-      stage2_inter[reg1, reg2, ] <- stage2_result[-1]
+      theta <- stage2_result$theta
+      rho[reg1, reg2] <- theta["rho"]
+      rho[reg2, reg1] <- theta["rho"]
+      stage2_inter[reg1, reg2, ] <- theta[-1]
       stage2_inter[reg2, reg1, ] <- stage2_inter[reg1, reg2, ]
       message("Finished region pair ", reg1, " - ", reg2, "\n")
     }
