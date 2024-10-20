@@ -60,7 +60,8 @@ qfuncMM_stage2_inter <- function(
     j1$subject_id, j1$region_uniqid, j2$region_uniqid
   ))
 
-  stage2 <- fit_inter_model(j1, j2, kernel_type_id, rho_eblue, verbose)
+  inter_result <- fit_inter_model(j1, j2, kernel_type_id, rho_eblue, verbose)
+  theta <- inter_result$theta
 
   outlist <- list(
     subject_id = j1$subject_id,
@@ -74,9 +75,10 @@ qfuncMM_stage2_inter <- function(
   )
   outlist$stage2 <-
     c(
-      list(rho = stage2["rho"], rho_eblue = rho_eblue, rho_ca = rho_ca),
-      as.list(stage2[setdiff(names(stage2), "rho")])
+      list(rho = theta["rho"], rho_eblue = rho_eblue, rho_ca = rho_ca),
+      as.list(theta[setdiff(names(theta), "rho")])
     )
+  outlist$objective <- inter_result$objective
   out_json <- jsonlite::toJSON(outlist, auto_unbox = TRUE, pretty = TRUE, digits = I(10))
   write(out_json, out_file)
   message(

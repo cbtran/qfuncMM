@@ -36,7 +36,7 @@ fit_inter_model <- function(region1_info, region2_info, kernel_type_id, rho_init
     verbose = verbose
   )
 
-  stage2 <- result$theta
-  names(stage2) <- c("rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta")
-  return(stage2)
+  theta <- result$theta
+  names(theta) <- c("rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta")
+  return(list(theta = theta, objective = result$objective))
 }
