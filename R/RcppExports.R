@@ -59,3 +59,8 @@ opt_inter <- function(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxe
     .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, cov_setting_id1, cov_setting_id2, kernel_type_id, verbose)
 }
 
+#' @export
+profile_inter <- function(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id) {
+    .Call('_qfuncMM_profile_inter', PACKAGE = 'qfuncMM', theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id)
+}
+

@@ -256,3 +256,54 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
                             Rcpp::Named("var_noise") = var_noise,
                             Rcpp::Named("objective") = cb.BestObjective());
 }
+
+//' @export
+// [[Rcpp::export]]
+Rcpp::List
+profile_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
+              const arma::mat &dataRegion2, const arma::mat &voxel_coords_1,
+              const arma::mat &voxel_coords_2, const arma::mat &time_sqrd_mat,
+              const arma::vec &stage1ParamsRegion1,
+              const arma::vec &stage1ParamsRegion2, int kernel_type_id) {
+  using arma::mat;
+  using arma::vec;
+
+  // Necessary evil since we can't easily expose enums to R
+  KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
+
+  // Read in parameters inits
+  mat theta_vec(theta_init);
+
+  mat sqrd_dist_region1 = squared_distance(voxel_coords_1);
+  mat sqrd_dist_region2 = squared_distance(voxel_coords_2);
+
+  // These kronecker products are expensive to compute, so we do them out here
+  // instead of inside the optimization class
+  // Stage 1 param list: phi_gamma, tau_gamma, k_gamma, nugget_gamma, var_noise
+  const mat block_region_1 = arma::kron(
+      get_cor_mat(kernel_type, sqrd_dist_region1, stage1ParamsRegion1(0)),
+      stage1ParamsRegion1(2) * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
+                                           stage1ParamsRegion1(1)) +
+          stage1ParamsRegion1(3) *
+              arma::eye(dataRegion1.n_rows, dataRegion1.n_rows));
+
+  const mat block_region_2 = arma::kron(
+      get_cor_mat(kernel_type, sqrd_dist_region2, stage1ParamsRegion2(0)),
+      stage1ParamsRegion2(2) * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
+                                           stage1ParamsRegion2(1)) +
+          stage1ParamsRegion2(3) *
+              arma::eye(dataRegion2.n_rows, dataRegion2.n_rows));
+
+  // dataRegion1, dataRegion2, stage1ParamsRegion1, stage1ParamsRegion2,
+  // block_region_1, block_region_2, cov_setting1, cov_setting2,
+  // time_sqrd_mat);
+  OptInter objective(dataRegion1, dataRegion2, stage1ParamsRegion1,
+                     stage1ParamsRegion2, block_region_1, block_region_2,
+                     CovSetting::noiseless, CovSetting::noiseless,
+                     time_sqrd_mat);
+  mat grad = arma::zeros<mat>(theta_vec.n_elem, 1);
+  double val = objective.EvaluateWithGradient(theta_vec, grad);
+
+  return Rcpp::List::create(Rcpp::Named("val") = val,
+                            Rcpp::Named("grad") = grad);
+}
