@@ -36,51 +36,18 @@ double OptInter::EvaluateWithGradient(const arma::mat &theta_unrestrict,
   mat At = rbf(timeSqrd_, tauEta);
   At.diag() += nuggetEta;
 
-  mat M_11, M_22, M_12;
-
   clock.tick("V blocks");
-  if (!IsNoiseless(cov_setting_region1_) &&
-      !IsNoiseless(cov_setting_region2_)) {
-    M_12 = repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At, numVoxelRegion1_,
-                  numVoxelRegion2_);
-    M_11 = spaceTimeKernelRegion1_ +
-           kEta1 * repmat(At, numVoxelRegion1_, numVoxelRegion1_) +
-           eye(numVoxelRegion1_ * numTimePt_, numVoxelRegion1_ * numTimePt_);
-    M_22 = spaceTimeKernelRegion2_ +
-           kEta2 * repmat(At, numVoxelRegion2_, numVoxelRegion2_) +
-           eye(numVoxelRegion2_ * numTimePt_, numVoxelRegion2_ * numTimePt_);
-  } else if (IsNoiseless(cov_setting_region1_) &&
-             IsNoiseless(cov_setting_region2_)) {
-    M_12 = repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At, numVoxelRegion1_,
-                  numVoxelRegion2_);
-    M_11 = spaceTimeKernelRegion1_ +
-           repmat(kEta1 * At, numVoxelRegion1_, numVoxelRegion1_);
-    M_22 = spaceTimeKernelRegion2_ +
-           repmat(kEta2 * At, numVoxelRegion2_, numVoxelRegion2_);
-  } else if (IsNoiseless(cov_setting_region1_)) {
-    // Region 1 is noiseless and region 2 is noisy
-    double sigma_region2 = sqrt(sigma2_.second);
-    M_12 = repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At * sigma_region2,
-                  numVoxelRegion1_, numVoxelRegion2_);
-    M_11 = spaceTimeKernelRegion1_ +
-           kEta1 * repmat(At, numVoxelRegion1_, numVoxelRegion1_);
-    M_22 = sigma_region2 * spaceTimeKernelRegion2_ +
-           sigma2_.second * kEta2 *
-               repmat(At, numVoxelRegion2_, numVoxelRegion2_) +
-           sigma2_.second * eye(numVoxelRegion2_ * numTimePt_,
-                                numVoxelRegion2_ * numTimePt_);
-  } else {
-    // Region 1 is noisy and region 2 is noiseless
-    double sigma_region1 = sqrt(sigma2_.first);
-    M_12 = repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At * sigma_region1,
-                  numVoxelRegion1_, numVoxelRegion2_);
-    M_11 =
-        sigma_region1 * spaceTimeKernelRegion1_ +
-        sigma2_.first * kEta1 * repmat(At, numVoxelRegion1_, numVoxelRegion1_) +
-        sigma2_.first *
-            eye(numVoxelRegion1_ * numTimePt_, numVoxelRegion1_ * numTimePt_);
-    M_22 = spaceTimeKernelRegion2_ +
-           kEta2 * repmat(At, numVoxelRegion2_, numVoxelRegion2_);
+  mat M_11 = spaceTimeKernelRegion1_;
+  M_11 += repmat(kEta1 * At, numVoxelRegion1_, numVoxelRegion1_);
+  mat M_22 = spaceTimeKernelRegion2_;
+  M_22 += repmat(kEta2 * At, numVoxelRegion2_, numVoxelRegion2_);
+  mat M_12 = repmat(rho * sqrt(kEta1 * kEta2) * At, numVoxelRegion1_,
+                    numVoxelRegion2_);
+  if (!IsNoiseless(cov_setting_region1_)) {
+    M_11.diag() += 1;
+  }
+  if (!IsNoiseless(cov_setting_region2_)) {
+    M_22.diag() += 1;
   }
   clock.tock("V blocks");
 
