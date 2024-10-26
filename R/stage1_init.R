@@ -1,12 +1,3 @@
-rbf <- function(tau, time_sqrd_mat) {
-  exp(-tau^2 / 2 * time_sqrd_mat)
-}
-
-matern <- function(phi, dist_mat) {
-  (1 + phi * sqrt(5) * dist_mat + phi^2 * (5 / 3) * dist_mat^2) *
-    exp(-phi * sqrt(5) * dist_mat)
-}
-
 # Nonlinear least squares objective for k and tau
 opt_init_temporal <- function(theta, time_sqrd_mat, raw_cov_numeric) {
   k <- theta[1]

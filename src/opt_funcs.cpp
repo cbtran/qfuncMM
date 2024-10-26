@@ -13,6 +13,7 @@
 #include "get_cor_mat.h"
 #include "helper.h"
 #include "matern.h"
+#include "rbf.h"
 // [[Rcpp::depends(RcppEnsmallen)]]
 
 /*****************************************************************************
@@ -255,4 +256,75 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
   return Rcpp::List::create(Rcpp::Named("theta") = result,
                             Rcpp::Named("var_noise") = var_noise,
                             Rcpp::Named("objective") = cb.BestObjective());
+}
+
+// [[Rcpp::export]]
+double stage2_inter_nll(const arma::vec &theta_init, const arma::mat &region1,
+                        const arma::mat &region2, const arma::mat &r1_coords,
+                        const arma::mat &r2_coords,
+                        const arma::mat &time_sqrd_mat,
+                        const arma::vec &r1_stage1, const arma::vec &r2_stage1,
+                        const arma::mat &lambda1, const arma::mat &lambda2,
+                        int cov_setting_id1, int cov_setting_id2,
+                        int kernel_type_id) {
+  using namespace arma;
+  // theta parameter list:
+  // rho, kEta1, kEta2, tauEta, nugget
+  double rho = theta_init(0);
+  double kEta1 = theta_init(1);
+  double kEta2 = theta_init(2);
+  double tauEta = theta_init(3);
+  double nuggetEta = theta_init(4);
+
+  int m = region1.n_rows;
+  int l1 = region1.n_cols;
+  int l2 = region2.n_cols;
+
+  CovSetting cov_setting1 = static_cast<CovSetting>(cov_setting_id1);
+  CovSetting cov_setting2 = static_cast<CovSetting>(cov_setting_id2);
+  double sigma2_region1 = IsNoiseless(cov_setting1) ? 1 : r1_stage1(4);
+  double sigma2_region2 = IsNoiseless(cov_setting2) ? 1 : r2_stage1(4);
+  vec x_scaled = join_vert(vectorise(region1) / sqrt(sigma2_region1),
+                           vectorise(region2) / sqrt(sigma2_region2));
+
+  // A Matrix
+  mat At = rbf(time_sqrd_mat, tauEta);
+  At.diag() += nuggetEta;
+
+  mat M_11 = lambda1;
+  M_11 += repmat(kEta1 * At, l1, l1);
+  mat M_22 = lambda2;
+  M_22 += repmat(kEta2 * At, l2, l2);
+  mat M_12 = repmat(rho * sqrt(kEta1 * kEta2) * At, l1, l2);
+  if (!IsNoiseless(cov_setting1)) {
+    M_11.diag() += 1;
+  }
+  if (!IsNoiseless(cov_setting2)) {
+    M_22.diag() += 1;
+  }
+
+  mat V = join_vert(join_horiz(M_11, M_12), join_horiz(M_12.t(), M_22));
+  mat U = join_vert(join_horiz(ones(m * l1, 1), zeros(m * l1, 1)),
+                    join_horiz(zeros(m * l2, 1), ones(m * l2, 1)));
+
+  mat VR = arma::chol(V);
+  mat VRinv = arma::inv(arma::trimatu(VR));
+  mat Vinv = VRinv * VRinv.t();
+  mat VinvU = arma::solve(arma::trimatu(VR), VRinv.t() * U);
+  mat UtVinvU = U.t() * VinvU;
+  mat UtVinvU_R = arma::chol(UtVinvU);
+  mat Rinv = arma::inv(arma::trimatu(UtVinvU_R));
+  mat H = Vinv - VinvU * Rinv * Rinv.t() * VinvU.t();
+
+  // l1 is logdet(Vjj')
+  double nll1 = 2 * arma::sum(arma::log(arma::diagvec(VR)));
+  // l2 is logdet(UtVinvjj'U)
+  double nll2 = 2 * std::real(arma::log_det(arma::trimatu(UtVinvU_R)));
+
+  vec HX = H * x_scaled;
+
+  double nll3 = arma::as_scalar(x_scaled.t() * HX);
+  double negLL = nll1 + nll2 + nll3;
+
+  return negLL;
 }

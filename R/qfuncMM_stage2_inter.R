@@ -11,6 +11,7 @@
 #' @useDynLib qfuncMM
 #' @importFrom Rcpp sourceCpp
 #' @importFrom jsonlite toJSON read_json
+#' @importFrom minqa bobyqa
 #' @export
 qfuncMM_stage2_inter <- function(
     stage1_region1_outfile, stage1_region2_outfile, out_dir,
