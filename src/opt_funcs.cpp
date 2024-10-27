@@ -279,8 +279,6 @@ double stage2_inter_nll(const arma::vec &theta_init, const arma::mat &region1,
   int m = region1.n_rows;
   int l1 = region1.n_cols;
   int l2 = region2.n_cols;
-  int ml1 = m * l1;
-  int ml2 = m * l2;
 
   mat U1 = join_horiz(ones(m * l1, 1), zeros(m * l1, 1));
   mat U2 = join_horiz(zeros(m * l2, 1), ones(m * l2, 1));
@@ -297,17 +295,30 @@ double stage2_inter_nll(const arma::vec &theta_init, const arma::mat &region1,
   At.diag() += nuggetEta;
 
   mat M_11 = lambda1;
-  M_11 += repmat(kEta1 * At, l1, l1);
+  mat At_scaled = kEta1 * At;
+
+  for (size_t i = 0; i < l1; ++i) {
+    for (size_t j = 0; j < l1; ++j) {
+      M_11.submat(i * m, j * m, (i + 1) * m - 1, (j + 1) * m - 1) += At_scaled;
+    }
+  }
+
   mat M_22 = lambda2;
-  M_22 += repmat(kEta2 * At, l2, l2);
-  mat M_12t = repmat(rho * sqrt(kEta1 * kEta2) * At.t(), l2, l1);
+  At_scaled = kEta2 * At;
+  for (size_t i = 0; i < l2; ++i) {
+    for (size_t j = 0; j < l2; ++j) {
+      M_22.submat(i * m, j * m, (i + 1) * m - 1, (j + 1) * m - 1) += At_scaled;
+    }
+  }
+
+  At_scaled = rho * sqrt(kEta1 * kEta2) * At.t();
+  mat M_12t = repmat(At_scaled, l2, l1);
   if (!IsNoiseless(cov_setting1)) {
     M_11.diag() += 1;
   }
   if (!IsNoiseless(cov_setting2)) {
     M_22.diag() += 1;
   }
-
   mat M11R = chol(M_11);
   mat M11Ri = inv(trimatu(M11R));
   mat D = M_12t * M11Ri;
@@ -316,36 +327,32 @@ double stage2_inter_nll(const arma::vec &theta_init, const arma::mat &region1,
   mat SR = chol(S);
   mat SRi = inv(trimatu(SR));
 
-  // mat V = join_vert(join_horiz(M_11, M_12), join_horiz(M_12.t(), M_22));
-
-  // mat VR = arma::chol(V);
-  // mat VRinv = arma::inv(arma::trimatu(VR));
-
   mat &VRinv11 = M11Ri;
   mat &VRinv22 = SRi;
-  // take the column sum of VRinv11 here.
-  mat Htilde1 = VRinv11.t() * U1;
-  mat Htilde2 = -SRi.t() * D * M11Ri.t() * U1 + VRinv22.t() * U2;
-  mat UtVinvU = Htilde1.t() * Htilde1 + Htilde2.t() * Htilde2;
+  mat Htilde1t = U1.t() * VRinv11;
+  mat Htilde2t = -U1.t() * M11Ri * D.t() * VRinv22 + U2.t() * VRinv22;
+  mat UtVinvU = Htilde1t * Htilde1t.t() + Htilde2t * Htilde2t.t();
   mat UtVinvU_R = chol(UtVinvU);
   mat Rinv = inv(trimatu(UtVinvU_R));
-  mat Htilde2Rinv = Htilde2 * Rinv;
-  mat HHtilde1 = VRinv11 * Htilde1 * Rinv - M11Ri * D.t() * SRi * Htilde2Rinv;
+  mat Htilde2Rinv = Htilde2t.t() * Rinv;
+  mat HHtilde1 =
+      VRinv11 * Htilde1t.t() * Rinv - M11Ri * D.t() * SRi * Htilde2Rinv;
   mat HHtilde2 = VRinv22 * Htilde2Rinv;
+
+  mat VitX1t = x_region1.t() * VRinv11;
+  mat VitX2t = -x_region1.t() * M11Ri * D.t() * SRi + x_region2.t() * VRinv22;
+  VitX1t *= VRinv11.t();
+  VitX1t -= VitX2t * SRi.t() * D * M11Ri.t();
+  VitX2t *= VRinv22.t();
+
+  vec HX1 = VitX1t.t();
+  mat HXcross = HHtilde1.t() * x_region1 + HHtilde2.t() * x_region2;
+  HX1 -= HHtilde1 * HXcross;
+  vec HX2 = VitX2t.t();
+  HX2 -= HHtilde2 * HXcross;
 
   double nll1 = 2 * (sum(log(diagvec(M11R))) + sum(log(diagvec(SR))));
   double nll2 = 2 * std::real(log_det(trimatu(UtVinvU_R)));
-  mat Vtilde1 = VRinv11.t() * x_region1;
-  mat Vtilde2 = -SRi.t() * D * M11Ri.t() * x_region1 + VRinv22.t() * x_region2;
-  mat VitX1 = VRinv11 * Vtilde1 + -M11Ri * D.t() * SRi * Vtilde2;
-  mat VitX2 = VRinv22 * Vtilde2;
-
-  vec HX1 = VitX1;
-  mat HXcross = HHtilde1.t() * x_region1 + HHtilde2.t() * x_region2;
-  HX1 -= HHtilde1 * HXcross;
-  vec HX2 = VitX2;
-  HX2 -= HHtilde2 * HXcross;
-
   double nll3 = as_scalar(x_region1.t() * HX1 + x_region2.t() * HX2);
   double negLL = nll1 + nll2 + nll3;
 

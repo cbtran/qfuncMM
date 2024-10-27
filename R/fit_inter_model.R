@@ -2,9 +2,19 @@
 #'
 #' @noRd
 
-fit_inter_model <- function(region1_info, region2_info, kernel_type_id, rho_init, verbose) {
+fit_inter_model <- function(region1_info, region2_info, kernel_type_id, rho_init, verbose, max_iter = 100) {
   m <- length(region1_info$eblue)
   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
+
+
+  r1_num_voxel <- ncol(region1_info$data_std)
+  r2_num_voxel <- ncol(region2_info$data_std)
+  if (r1_num_voxel < r2_num_voxel) {
+    # It is faster to put the smaller region second
+    temp <- region1_info
+    region1_info <- region2_info
+    region2_info <- temp
+  }
 
   # Use the EBLUE as a reasonable initialization.
   init <- c(rho_init, 1, 1, 0.5, 0.1)
@@ -31,10 +41,15 @@ fit_inter_model <- function(region1_info, region2_info, kernel_type_id, rho_init
     cov_setting_id1 = cov_setting_dict(region1_info$cov_setting),
     cov_setting_id2 = cov_setting_dict(region2_info$cov_setting),
     kernel_type_id = 3L,
-    control = list(npt = 9, iprint = 3, rhobeg = 0.2, rhoend = 1e-6, maxfun = 250)
+    control = list(npt = 9, iprint = 3, rhobeg = 0.2, rhoend = 1e-6, maxfun = max_iter)
   )
 
   theta <- result$par
   names(theta) <- c("rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta")
+  if (r1_num_voxel < r2_num_voxel) {
+    temp <- theta["k_eta1"]
+    theta["k_eta1"] <- theta["k_eta2"]
+    theta["k_eta2"] <- temp
+  }
   return(list(theta = theta, objective = result$fval))
 }
