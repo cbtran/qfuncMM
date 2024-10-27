@@ -309,21 +309,18 @@ double stage2_inter_nll(const arma::vec &theta_init, const arma::mat &region1,
 
   mat VR = arma::chol(V);
   mat VRinv = arma::inv(arma::trimatu(VR));
-  mat Vinv = VRinv * VRinv.t();
-  mat VinvU = arma::solve(arma::trimatu(VR), VRinv.t() * U);
-  mat UtVinvU = U.t() * VinvU;
-  mat UtVinvU_R = arma::chol(UtVinvU);
-  mat Rinv = arma::inv(arma::trimatu(UtVinvU_R));
-  mat H = Vinv - VinvU * Rinv * Rinv.t() * VinvU.t();
+  mat Htilde = VRinv.t() * U;
+  mat UtVinvU = Htilde.t() * Htilde;
+  mat UtVinvU_R = chol(UtVinvU);
+  mat Rinv = inv(trimatu(UtVinvU_R));
+  Htilde = VRinv * Htilde * Rinv;
 
-  // l1 is logdet(Vjj')
   double nll1 = 2 * arma::sum(arma::log(arma::diagvec(VR)));
-  // l2 is logdet(UtVinvjj'U)
   double nll2 = 2 * std::real(arma::log_det(arma::trimatu(UtVinvU_R)));
 
-  vec HX = H * x_scaled;
+  vec HX = VRinv * VRinv.t() * x_scaled - Htilde * Htilde.t() * x_scaled;
 
-  double nll3 = arma::as_scalar(x_scaled.t() * HX);
+  double nll3 = as_scalar(x_scaled.t() * HX);
   double negLL = nll1 + nll2 + nll3;
 
   return negLL;
