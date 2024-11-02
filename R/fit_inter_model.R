@@ -2,10 +2,9 @@
 #'
 #' @noRd
 
-fit_inter_model <- function(region1_info, region2_info, kernel_type_id, rho_init, verbose, max_iter = 100) {
+fit_inter_model <- function(region1_info, region2_info, kernel_type_id, init, verbose, max_iter = 100) {
   m <- length(region1_info$eblue)
   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
-
 
   r1_num_voxel <- ncol(region1_info$data_std)
   r2_num_voxel <- ncol(region2_info$data_std)
@@ -15,9 +14,6 @@ fit_inter_model <- function(region1_info, region2_info, kernel_type_id, rho_init
     region1_info <- region2_info
     region2_info <- temp
   }
-
-  # Use the EBLUE as a reasonable initialization.
-  init <- c(rho_init, 1, 1, 0.5, 0.1)
 
   r1_distmat <- as.matrix(stats::dist(region1_info$coords))
   c1 <- matern(region1_info$stage1$phi, r1_distmat)

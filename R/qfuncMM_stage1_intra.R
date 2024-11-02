@@ -108,7 +108,7 @@ qfuncMM_stage1_intra <- function(
         intra2 <- fit_intra_model(
           region_data_std,
           region_coords,
-          inits[seq(noisy_num_init_tries + 1, num_init), ],
+          inits[seq(noisy_num_init_tries + 1, num_init), , drop = FALSE],
           kernel_type_id,
           "noisy",
           verbose = verbose
