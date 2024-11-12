@@ -27,7 +27,7 @@ fit_inter_model <- function(region1_info, region2_info, kernel_type_id, init, ve
   diag(b2) <- diag(b2) + region2_info$stage1$nugget_gamma
   lambda2 <- kronecker(c2, b2)
 
-  result <- minqa::bobyqa(init, stage2_inter_nll,
+  result <- minqa::bobyqa(init, stage2_inter_reml,
     lower = c(-1, 0, 0, 0, 0), upper = c(1, Inf, Inf, Inf, Inf),
     region1 = region1_info$data_std, region2 = region2_info$data_std,
     r1_coords = region1_info$coords, r2_coords = region2_info$coords,

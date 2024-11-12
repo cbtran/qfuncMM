@@ -66,9 +66,9 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// stage2_inter_nll
-double stage2_inter_nll(const arma::vec& theta_init, const arma::mat& region1, const arma::mat& region2, const arma::mat& r1_coords, const arma::mat& r2_coords, const arma::mat& time_sqrd_mat, const arma::vec& r1_stage1, const arma::vec& r2_stage1, const arma::mat& lambda1, const arma::mat& lambda2, int cov_setting_id1, int cov_setting_id2, int kernel_type_id);
-RcppExport SEXP _qfuncMM_stage2_inter_nll(SEXP theta_initSEXP, SEXP region1SEXP, SEXP region2SEXP, SEXP r1_coordsSEXP, SEXP r2_coordsSEXP, SEXP time_sqrd_matSEXP, SEXP r1_stage1SEXP, SEXP r2_stage1SEXP, SEXP lambda1SEXP, SEXP lambda2SEXP, SEXP cov_setting_id1SEXP, SEXP cov_setting_id2SEXP, SEXP kernel_type_idSEXP) {
+// stage2_inter_reml
+double stage2_inter_reml(const arma::vec& theta_init, const arma::mat& region1, const arma::mat& region2, const arma::mat& r1_coords, const arma::mat& r2_coords, const arma::mat& time_sqrd_mat, const arma::vec& r1_stage1, const arma::vec& r2_stage1, const arma::mat& lambda1, const arma::mat& lambda2, int cov_setting_id1, int cov_setting_id2, int kernel_type_id);
+RcppExport SEXP _qfuncMM_stage2_inter_reml(SEXP theta_initSEXP, SEXP region1SEXP, SEXP region2SEXP, SEXP r1_coordsSEXP, SEXP r2_coordsSEXP, SEXP time_sqrd_matSEXP, SEXP r1_stage1SEXP, SEXP r2_stage1SEXP, SEXP lambda1SEXP, SEXP lambda2SEXP, SEXP cov_setting_id1SEXP, SEXP cov_setting_id2SEXP, SEXP kernel_type_idSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -85,7 +85,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type cov_setting_id1(cov_setting_id1SEXP);
     Rcpp::traits::input_parameter< int >::type cov_setting_id2(cov_setting_id2SEXP);
     Rcpp::traits::input_parameter< int >::type kernel_type_id(kernel_type_idSEXP);
-    rcpp_result_gen = Rcpp::wrap(stage2_inter_nll(theta_init, region1, region2, r1_coords, r2_coords, time_sqrd_mat, r1_stage1, r2_stage1, lambda1, lambda2, cov_setting_id1, cov_setting_id2, kernel_type_id));
+    rcpp_result_gen = Rcpp::wrap(stage2_inter_reml(theta_init, region1, region2, r1_coords, r2_coords, time_sqrd_mat, r1_stage1, r2_stage1, lambda1, lambda2, cov_setting_id1, cov_setting_id2, kernel_type_id));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -94,7 +94,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qfuncMM_opt_intra", (DL_FUNC) &_qfuncMM_opt_intra, 7},
     {"_qfuncMM_eval_stage1_nll", (DL_FUNC) &_qfuncMM_eval_stage1_nll, 5},
     {"_qfuncMM_opt_inter", (DL_FUNC) &_qfuncMM_opt_inter, 12},
-    {"_qfuncMM_stage2_inter_nll", (DL_FUNC) &_qfuncMM_stage2_inter_nll, 13},
+    {"_qfuncMM_stage2_inter_reml", (DL_FUNC) &_qfuncMM_stage2_inter_reml, 13},
     {NULL, NULL, 0}
 };
 

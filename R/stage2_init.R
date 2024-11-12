@@ -33,7 +33,7 @@ init_region <- function(region_info) {
     data_cross = data_cross, time_sqrd = time_sqrd,
     method = "L-BFGS-B", lower = c(0.0001, 0.0001)
   )
-  message(optim_result$value)
+  # message(optim_result$value)
   (par <- optim_result$par)
   chi_im <- par[1]
   k_eta <- chi_im
