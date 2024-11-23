@@ -25,12 +25,12 @@ qfuncMM_stage2_inter <- function(
   }
 
   j1 <- jsonlite::read_json(stage1_region1_outfile, simplifyVector = TRUE)
-  if (j1$stage1$var_noise == "NA") {
-    j1$stage1$var_noise <- NA
+  if (j1$stage1$sigma2_ep == "NA") {
+    j1$stage1$sigma2_ep <- NA
   }
   j2 <- jsonlite::read_json(stage1_region2_outfile, simplifyVector = TRUE)
-  if (j2$stage1$var_noise == "NA") {
-    j2$stage1$var_noise <- NA
+  if (j2$stage1$sigma2_ep == "NA") {
+    j2$stage1$sigma2_ep <- NA
   }
   if (j1$subject_id != j2$subject_id) {
     stop(sprintf(
@@ -76,9 +76,9 @@ qfuncMM_stage2_inter <- function(
   outlist$stage2 <-
     c(
       list(rho = theta["rho"], rho_eblue = rho_eblue, rho_ca = rho_ca),
-      as.list(theta[setdiff(names(theta), "rho")])
+      as.list(theta[get("stage2_paramlist_components", qfuncMM_pkg_env)])
     )
-  outlist$objective <- inter_result$objective
+  outlist$objval <- inter_result$objval
   out_json <- jsonlite::toJSON(outlist, auto_unbox = TRUE, pretty = TRUE, digits = I(10))
   write(out_json, out_file)
   message(

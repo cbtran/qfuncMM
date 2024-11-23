@@ -4,7 +4,6 @@
 #include "OptInter.h"
 #include "OptIntra.h"
 #include "Rcpp/exceptions.h"
-#include "Rcpp/iostream/Rstreambuf.h"
 #include "Rcpp/vector/instantiation.h"
 #include "armadillo"
 #include "cov_setting.h"
@@ -92,7 +91,7 @@ Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
 
   return Rcpp::List::create(
       Rcpp::Named("theta") = theta, Rcpp::Named("psi") = psi,
-      Rcpp::Named("var_noise") = opt_intra->GetNoiseVarianceEstimate(),
+      Rcpp::Named("sigma2_ep") = opt_intra->GetNoiseVarianceEstimate(),
       Rcpp::Named("eblue") = opt_intra->GetEBlue(),
       Rcpp::Named("objval") = optval);
 }
@@ -123,29 +122,6 @@ Rcpp::List eval_stage1_nll(const arma::vec &theta, const arma::mat &X_region,
                             Rcpp::Named("grad") = grad);
 }
 
-class StatusCallback {
-
-  bool diag_time_;
-
-public:
-  StatusCallback(bool diag_time) : diag_time_(diag_time){};
-
-  template <typename OptimizerType, typename FunctionType>
-  void Gradient(OptimizerType &optimizer, FunctionType &function,
-                const arma::mat &coordinates, const arma::mat &gradient) {
-    // Rcpp::Rcout << "Grad norm: " << arma::norm(gradient) << std::endl;
-    Rcpp::Rcout << "params: " << sigmoid_inv(coordinates(0), -1, 1) << ", "
-                << softplus(coordinates(1)) << ", " << softplus(coordinates(2));
-
-    if (!diag_time_) {
-      Rcpp::Rcout << ", " << softplus(coordinates(3)) << ", "
-                  << softplus(coordinates(4));
-    }
-
-    Rcpp::Rcout << std::endl;
-  }
-};
-
 /*****************************************************************************
  Inter-regional model
 *****************************************************************************/
@@ -163,17 +139,15 @@ public:
 //' @param kernel_type_id Choice of spatial kernel
 //' @return List of 3 components:
 //'   theta: Estimated inter-regional parameters
-//'   var_noise: Estimated noise variance
+//'   sigma2_ep: Estimated noise variance
 //'   objective: optimal loss (negiatve log-likelihood) found.
 //' @noRd
 // [[Rcpp::export]]
-Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
-                     const arma::mat &dataRegion2,
-                     const arma::mat &voxel_coords_1,
-                     const arma::mat &voxel_coords_2,
-                     const arma::mat &time_sqrd_mat,
-                     const arma::vec &stage1ParamsRegion1,
-                     const arma::vec &stage1ParamsRegion2, int cov_setting_id1,
+Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &data_r1,
+                     const arma::mat &data_r2, const arma::mat &coords_r1,
+                     const arma::mat &coords_r2, const arma::mat &time_sqrd_mat,
+                     const Rcpp::NumericVector &stage1_r1,
+                     const Rcpp::NumericVector &stage1_r2, int cov_setting_id1,
                      int cov_setting_id2, int kernel_type_id, bool verbose) {
   using arma::mat;
   using arma::vec;
@@ -186,25 +160,24 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
   // Read in parameters inits
   mat theta_vec(theta_init);
 
-  mat sqrd_dist_region1 = squared_distance(voxel_coords_1);
-  mat sqrd_dist_region2 = squared_distance(voxel_coords_2);
+  mat sqrd_dist_region1 = squared_distance(coords_r1);
+  mat sqrd_dist_region2 = squared_distance(coords_r2);
 
   // These kronecker products are expensive to compute, so we do them out here
   // instead of inside the optimization class
-  // Stage 1 param list: phi_gamma, tau_gamma, k_gamma, nugget_gamma, var_noise
-  const mat block_region_1 = arma::kron(
-      get_cor_mat(kernel_type, sqrd_dist_region1, stage1ParamsRegion1(0)),
-      stage1ParamsRegion1(2) * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
-                                           stage1ParamsRegion1(1)) +
-          stage1ParamsRegion1(3) *
-              arma::eye(dataRegion1.n_rows, dataRegion1.n_rows));
+  const mat lambda_region1 = arma::kron(
+      get_cor_mat(kernel_type, sqrd_dist_region1, stage1_r1["phi_gamma"]),
+      stage1_r1["k_gamma"] * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
+                                         stage1_r1["tau_gamma"]) +
+          stage1_r1["nugget_gamma"] *
+              arma::eye(data_r1.n_rows, data_r1.n_rows));
 
-  const mat block_region_2 = arma::kron(
-      get_cor_mat(kernel_type, sqrd_dist_region2, stage1ParamsRegion2(0)),
-      stage1ParamsRegion2(2) * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
-                                           stage1ParamsRegion2(1)) +
-          stage1ParamsRegion2(3) *
-              arma::eye(dataRegion2.n_rows, dataRegion2.n_rows));
+  const mat lambda_region2 = arma::kron(
+      get_cor_mat(kernel_type, sqrd_dist_region2, stage1_r2["phi_gamma"]),
+      stage1_r2["k_gamma"] * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
+                                         stage1_r2["tau_gamma"]) +
+          stage1_r2["nugget_gamma"] *
+              arma::eye(data_r2.n_rows, data_r2.n_rows));
 
   bool any_diag_time = cov_setting1 == CovSetting::diag_time ||
                        cov_setting2 == CovSetting::diag_time;
@@ -212,14 +185,12 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
   std::unique_ptr<IOptInter> opt_inter;
   if (any_diag_time) {
     opt_inter = std::make_unique<OptInterDiagTime>(
-        dataRegion1, dataRegion2, stage1ParamsRegion1, stage1ParamsRegion2,
-        block_region_1, block_region_2, cov_setting1, cov_setting2,
-        time_sqrd_mat);
+        data_r1, data_r2, stage1_r1, stage1_r2, lambda_region1, lambda_region2,
+        cov_setting1, cov_setting2, time_sqrd_mat);
   } else {
     opt_inter = std::make_unique<OptInter>(
-        dataRegion1, dataRegion2, stage1ParamsRegion1, stage1ParamsRegion2,
-        block_region_1, block_region_2, cov_setting1, cov_setting2,
-        time_sqrd_mat);
+        data_r1, data_r2, stage1_r1, stage1_r2, lambda_region1, lambda_region2,
+        cov_setting1, cov_setting2, time_sqrd_mat);
   }
 
   ens::L_BFGS optimizer(10);
@@ -249,10 +220,11 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &dataRegion1,
     result(4) = softplus(best(4)); // nuggetEta
   }
 
-  std::pair<double, double> sigma2_hat = opt_inter->GetNoiseVarianceEstimates();
-  vec var_noise = {sigma2_hat.first, sigma2_hat.second};
+  std::pair<double, double> sigma2_ep_hat =
+      opt_inter->GetNoiseVarianceEstimates();
+  vec sigma2_ep = {sigma2_ep_hat.first, sigma2_ep_hat.second};
 
   return Rcpp::List::create(Rcpp::Named("theta") = result,
-                            Rcpp::Named("var_noise") = var_noise,
-                            Rcpp::Named("objective") = cb.BestObjective());
+                            Rcpp::Named("sigma2_ep") = sigma2_ep,
+                            Rcpp::Named("objval") = cb.BestObjective());
 }

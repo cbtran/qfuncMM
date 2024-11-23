@@ -93,7 +93,7 @@ qfuncMM_fullrun_small_regions <- function(region_list, voxel_coords,
     dim = c(n_region, n_region, 4),
     dimnames = c(
       region_dimnames,
-      list(c("k_eta1", "k_eta2", "tau_eta", "nugget_eta"))
+      list(get("stage2_paramlist_components", qfuncMM_pkg_env))
     )
   )
   rho_eblue <- matrix(1,
@@ -122,7 +122,7 @@ qfuncMM_fullrun_small_regions <- function(region_list, voxel_coords,
       theta <- stage2_result$theta
       rho[reg1, reg2] <- theta["rho"]
       rho[reg2, reg1] <- theta["rho"]
-      stage2_inter[reg1, reg2, ] <- theta[-1]
+      stage2_inter[reg1, reg2, ] <- theta[get("stage2_paramlist_components", qfuncMM_pkg_env)]
       stage2_inter[reg2, reg1, ] <- stage2_inter[reg1, reg2, ]
       message("Finished region pair ", reg1, " - ", reg2, "\n")
     }

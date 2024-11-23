@@ -23,13 +23,13 @@ fit_inter_model <- function(region1_info, region2_info, kernel_type_id, rho_init
 
   result <- opt_inter(
     theta_init = init,
-    dataRegion1 = region1_info$data_std,
-    dataRegion2 = region2_info$data_std,
-    voxel_coords_1 = region1_info$coords,
-    voxel_coords_2 = region2_info$coords,
+    data_r1 = region1_info$data_std,
+    data_r2 = region2_info$data_std,
+    coords_r1 = region1_info$coords,
+    coords_r2 = region2_info$coords,
     time_sqrd_mat = time_sqrd_mat,
-    stage1ParamsRegion1 = unlist(region1_info$stage1[c("phi", "tau_gamma", "k_gamma", "nugget_gamma", "var_noise")]),
-    stage1ParamsRegion2 = unlist(region2_info$stage1[c("phi", "tau_gamma", "k_gamma", "nugget_gamma", "var_noise")]),
+    stage1_r1 = unlist(region1_info$stage1),
+    stage1_r2 = unlist(region2_info$stage1),
     cov_setting_id1 = cov_setting_dict(region1_info$cov_setting),
     cov_setting_id2 = cov_setting_dict(region2_info$cov_setting),
     kernel_type_id = kernel_type_id,
@@ -37,6 +37,6 @@ fit_inter_model <- function(region1_info, region2_info, kernel_type_id, rho_init
   )
 
   theta <- result$theta
-  names(theta) <- c("rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta")
-  return(list(theta = theta, objective = result$objective))
+  names(theta) <- get("stage2_paramlist", qfuncMM_pkg_env)
+  return(list(theta = theta, objval = result$objval))
 }

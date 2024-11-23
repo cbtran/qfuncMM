@@ -52,10 +52,10 @@ eval_stage1_nll <- function(theta, X_region, voxel_coords, time_sqrd_mat, kernel
 #' @param kernel_type_id Choice of spatial kernel
 #' @return List of 3 components:
 #'   theta: Estimated inter-regional parameters
-#'   var_noise: Estimated noise variance
+#'   sigma2_ep: Estimated noise variance
 #'   objective: optimal loss (negiatve log-likelihood) found.
 #' @noRd
-opt_inter <- function(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, cov_setting_id1, cov_setting_id2, kernel_type_id, verbose) {
-    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, cov_setting_id1, cov_setting_id2, kernel_type_id, verbose)
+opt_inter <- function(theta_init, data_r1, data_r2, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, verbose) {
+    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, data_r1, data_r2, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, verbose)
 }
 

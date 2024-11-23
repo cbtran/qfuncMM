@@ -20,24 +20,19 @@ double OptInterDiagTime::EvaluateWithGradient(const arma::mat &theta_unrestrict,
   // double tauEta = softplus(theta_unrestrict(3));
   // double nuggetEta = softplus(theta_unrestrict(4));
 
-  int M_L1 = numTimePt_ * numVoxelRegion1_;
-  int M_L2 = numTimePt_ * numVoxelRegion2_;
+  int M_L1 = m_ * l1_;
+  int M_L2 = m_ * l2_;
 
   // A Matrix
   // mat At = rbf(timeSqrd_, tauEta);
-  mat At = eye(numTimePt_, numTimePt_);
+  mat At = eye(m_, m_);
 
-  mat M_12 = arma::repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At,
-                          numVoxelRegion1_, numVoxelRegion2_);
+  mat M_12 = arma::repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At, l1_, l2_);
 
-  mat M_11 =
-      spaceTimeKernelRegion1_ +
-      kEta1 * arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_) +
-      arma::eye(numVoxelRegion1_ * numTimePt_, numVoxelRegion1_ * numTimePt_);
-  mat M_22 =
-      spaceTimeKernelRegion2_ +
-      kEta2 * arma::repmat(At, numVoxelRegion2_, numVoxelRegion2_) +
-      arma::eye(numVoxelRegion2_ * numTimePt_, numVoxelRegion2_ * numTimePt_);
+  mat M_11 = lambda_r1_ + kEta1 * arma::repmat(At, l1_, l1_) +
+             arma::eye(l1_ * m_, l1_ * m_);
+  mat M_22 = lambda_r2_ + kEta2 * arma::repmat(At, l2_, l2_) +
+             arma::eye(l2_ * m_, l2_ * m_);
 
   mat V = join_vert(join_horiz(M_11, M_12), join_horiz(M_12.t(), M_22));
 
@@ -58,15 +53,15 @@ double OptInterDiagTime::EvaluateWithGradient(const arma::mat &theta_unrestrict,
   // l2 is logdet(UtVinvjj'U)
   double l2 = 2 * std::real(arma::log_det(arma::trimatu(UtVinvU_R)));
 
-  vec HX = H * dataRegionCombined_;
+  vec HX = H * data_;
 
-  double l3 = arma::as_scalar(dataRegionCombined_.t() * HX);
+  double l3 = arma::as_scalar(data_.t() * HX);
   double negLL = l1 + l2 + l3;
 
   // Compute gradients
-  mat At_11 = arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_);
-  mat At_22 = arma::repmat(At, numVoxelRegion2_, numVoxelRegion2_);
-  mat At_12 = arma::repmat(At, numVoxelRegion1_, numVoxelRegion2_);
+  mat At_11 = arma::repmat(At, l1_, l1_);
+  mat At_22 = arma::repmat(At, l2_, l2_);
+  mat At_12 = arma::repmat(At, l1_, l2_);
 
   mat dkEta2_12 = At_12 * sqrt(kEta2) * rho / (2 * sqrt(kEta1));
 
@@ -113,19 +108,14 @@ double OptInterDiagTime::Evaluate(const arma::mat &theta_unrestrict) {
   // double nuggetEta = softplus(theta_unrestrict(4));
 
   // A Matrix
-  mat At = arma::eye(numTimePt_, numTimePt_);
+  mat At = arma::eye(m_, m_);
 
-  mat M_12 = arma::repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At,
-                          numVoxelRegion1_, numVoxelRegion2_);
+  mat M_12 = arma::repmat(rho * sqrt(kEta1) * sqrt(kEta2) * At, l1_, l2_);
 
-  mat M_11 =
-      spaceTimeKernelRegion1_ +
-      kEta1 * arma::repmat(At, numVoxelRegion1_, numVoxelRegion1_) +
-      arma::eye(numVoxelRegion1_ * numTimePt_, numVoxelRegion1_ * numTimePt_);
-  mat M_22 =
-      spaceTimeKernelRegion2_ +
-      kEta2 * arma::repmat(At, numVoxelRegion2_, numVoxelRegion2_) +
-      arma::eye(numVoxelRegion2_ * numTimePt_, numVoxelRegion2_ * numTimePt_);
+  mat M_11 = lambda_r1_ + kEta1 * arma::repmat(At, l1_, l1_) +
+             arma::eye(l1_ * m_, l1_ * m_);
+  mat M_22 = lambda_r2_ + kEta2 * arma::repmat(At, l2_, l2_) +
+             arma::eye(l2_ * m_, l2_ * m_);
 
   mat V = join_vert(join_horiz(M_11, M_12), join_horiz(M_12.t(), M_22));
 
@@ -144,9 +134,9 @@ double OptInterDiagTime::Evaluate(const arma::mat &theta_unrestrict) {
   // l2 is logdet(UtVinvjj'U)
   double l2 = 2 * std::real(arma::log_det(arma::trimatu(UtVinvU_R)));
 
-  vec HX = H * dataRegionCombined_;
+  vec HX = H * data_;
 
-  double l3 = arma::as_scalar(dataRegionCombined_.t() * HX);
+  double l3 = arma::as_scalar(data_.t() * HX);
   double negLL = l1 + l2 + l3;
 
   return negLL;

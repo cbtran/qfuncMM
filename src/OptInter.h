@@ -6,34 +6,26 @@
 
 class IOptInter {
 protected:
-  arma::vec dataRegionCombined_;
+  arma::vec data_;
   arma::mat design_;
-  int numVoxelRegion1_, numVoxelRegion2_;
-  int numTimePt_;
-  const arma::mat &spaceTimeKernelRegion1_, &spaceTimeKernelRegion2_;
-  std::pair<double, double> sigma2_;
-  CovSetting cov_setting_region1_, cov_setting_region2_;
-  const arma::mat &timeSqrd_;
+  int l1_, l2_, m_; // Number of voxels in region 1, region 2, and time points
+  const arma::mat &lambda_r1_, &lambda_r2_; // Space-time kernels from stage 1
+  std::pair<double, double> sigma2_ep_;
+  CovSetting cov_setting_r1_, cov_setting_r2_;
+  const arma::mat &time_sqrd_;
 
 public:
-  IOptInter(const arma::mat &dataRegion1, const arma::mat &dataRegion2,
-            const arma::vec &stage1ParamsRegion1,
-            const arma::vec &stage1ParamsRegion2,
-            const arma::mat &spatialKernelRegion1,
-            const arma::mat &spatialKernelRegion2,
-            CovSetting cov_setting_region1, CovSetting cov_setting_region2,
-            const arma::mat &timeSqrd)
-      : numVoxelRegion1_(dataRegion1.n_cols),
-        numVoxelRegion2_(dataRegion2.n_cols), numTimePt_(dataRegion1.n_rows),
-        spaceTimeKernelRegion1_(spatialKernelRegion1),
-        spaceTimeKernelRegion2_(spatialKernelRegion2),
-        cov_setting_region1_(cov_setting_region1),
-        cov_setting_region2_(cov_setting_region2), timeSqrd_(timeSqrd) {
+  IOptInter(const arma::mat &data_r1, const arma::mat &data_r2,
+            const arma::mat &lambda_r1, const arma::mat &lambda_r2,
+            CovSetting cov_setting_r1, CovSetting cov_setting_r2,
+            const arma::mat &time_sqrd)
+      : l1_(data_r1.n_cols), l2_(data_r2.n_cols), m_(data_r1.n_rows),
+        lambda_r1_(lambda_r1), lambda_r2_(lambda_r2),
+        cov_setting_r1_(cov_setting_r1), cov_setting_r2_(cov_setting_r2),
+        time_sqrd_(time_sqrd) {
     using namespace arma;
-    design_ = join_vert(join_horiz(ones(numTimePt_ * numVoxelRegion1_, 1),
-                                   zeros(numTimePt_ * numVoxelRegion1_, 1)),
-                        join_horiz(zeros(numTimePt_ * numVoxelRegion2_, 1),
-                                   ones(numTimePt_ * numVoxelRegion2_, 1)));
+    design_ = join_vert(join_horiz(ones(m_ * l1_, 1), zeros(m_ * l1_, 1)),
+                        join_horiz(zeros(m_ * l2_, 1), ones(m_ * l2_, 1)));
   }
 
   virtual double EvaluateWithGradient(const arma::mat &theta_unrestrict,
@@ -41,36 +33,32 @@ public:
 
   virtual double Evaluate(const arma::mat &theta) = 0;
 
-  std::pair<double, double> GetNoiseVarianceEstimates() { return sigma2_; }
+  std::pair<double, double> GetNoiseVarianceEstimates() { return sigma2_ep_; }
 };
 
 class OptInter : public IOptInter {
 public:
-  OptInter(const arma::mat &dataRegion1, const arma::mat &dataRegion2,
-           const arma::vec &stage1ParamsRegion1,
-           const arma::vec &stage1ParamsRegion2,
-           const arma::mat &spatialKernelRegion1,
-           const arma::mat &spatialKernelRegion2,
-           CovSetting cov_setting_region1, CovSetting cov_setting_region2,
-           const arma::mat &timeSqrd)
-      : IOptInter(dataRegion1, dataRegion2, stage1ParamsRegion1,
-                  stage1ParamsRegion2, spatialKernelRegion1,
-                  spatialKernelRegion2, cov_setting_region1,
-                  cov_setting_region2, timeSqrd) {
-    double sigma2_region1 = cov_setting_region1 == CovSetting::noiseless
-                                ? 1
-                                : stage1ParamsRegion1(4);
-    double sigma2_region2 = cov_setting_region2 == CovSetting::noiseless
-                                ? 1
-                                : stage1ParamsRegion2(4);
-    dataRegionCombined_ =
-        join_vert(vectorise(dataRegion1) / sqrt(sigma2_region1),
-                  vectorise(dataRegion2) / sqrt(sigma2_region2));
-    sigma2_region1 =
-        IsNoiseless(cov_setting_region1) ? NA_REAL : stage1ParamsRegion1(4);
-    sigma2_region2 =
-        IsNoiseless(cov_setting_region2) ? NA_REAL : stage1ParamsRegion2(4);
-    sigma2_ = std::make_pair(sigma2_region1, sigma2_region2);
+  OptInter(const arma::mat &data_r1, const arma::mat &data_r2,
+           const Rcpp::NumericVector &stage1_r1,
+           const Rcpp::NumericVector &stage1_r2, const arma::mat &lambda_r1,
+           const arma::mat &lambda_r2, CovSetting cov_setting_r1,
+           CovSetting cov_setting_r2, const arma::mat &time_sqrd)
+      : IOptInter(data_r1, data_r2, lambda_r1, lambda_r2, cov_setting_r1,
+                  cov_setting_r2, time_sqrd) {
+    double sigma2_ep_region1 = stage1_r1["sigma2_ep"];
+    double sigma2_ep_region2 = stage1_r2["sigma2_ep"];
+    sigma2_ep_region1 = IsNoiseless(cov_setting_r1) ? 1.0 : sigma2_ep_region1;
+    sigma2_ep_region2 = IsNoiseless(cov_setting_r2) ? 1.0 : sigma2_ep_region2;
+    data_ = join_vert(vectorise(data_r1) / sqrt(sigma2_ep_region1),
+                      vectorise(data_r2) / sqrt(sigma2_ep_region2));
+
+    sigma2_ep_region1 = stage1_r1["sigma2_ep"];
+    sigma2_ep_region2 = stage1_r2["sigma2_ep"];
+    sigma2_ep_region1 =
+        IsNoiseless(cov_setting_r1) ? NA_REAL : sigma2_ep_region1;
+    sigma2_ep_region2 =
+        IsNoiseless(cov_setting_r2) ? NA_REAL : sigma2_ep_region2;
+    sigma2_ep_ = std::make_pair(sigma2_ep_region1, sigma2_ep_region2);
   }
 
   double EvaluateWithGradient(const arma::mat &theta_unrestrict,
@@ -81,22 +69,18 @@ public:
 
 class OptInterDiagTime : public IOptInter {
 public:
-  OptInterDiagTime(const arma::mat &dataRegion1, const arma::mat &dataRegion2,
-                   const arma::vec &stage1ParamsRegion1,
-                   const arma::vec &stage1ParamsRegion2,
-                   const arma::mat &spatialKernelRegion1,
-                   const arma::mat &spatialKernelRegion2,
-                   CovSetting cov_setting_region1,
-                   CovSetting cov_setting_region2, const arma::mat &timeSqrd)
-      : IOptInter(dataRegion1, dataRegion2, stage1ParamsRegion1,
-                  stage1ParamsRegion2, spatialKernelRegion1,
-                  spatialKernelRegion2, cov_setting_region1,
-                  cov_setting_region2, timeSqrd) {
+  OptInterDiagTime(const arma::mat &data_r1, const arma::mat &data_r2,
+                   const Rcpp::NumericVector &stage1_r1,
+                   const Rcpp::NumericVector &stage1_r2,
+                   const arma::mat &lambda_r1, const arma::mat &lambda_r2,
+                   CovSetting cov_setting_r1, CovSetting cov_setting_r2,
+                   const arma::mat &time_sqrd)
+      : IOptInter(data_r1, data_r2, lambda_r1, lambda_r2, cov_setting_r1,
+                  cov_setting_r2, time_sqrd) {
 
-    sigma2_ = std::make_pair(stage1ParamsRegion1(4), stage1ParamsRegion2(4));
-    dataRegionCombined_ =
-        join_vert(vectorise(dataRegion1) / sqrt(sigma2_.first),
-                  vectorise(dataRegion2) / sqrt(sigma2_.second));
+    sigma2_ep_ = std::make_pair(stage1_r1["sigma2_ep"], stage1_r2["sigma2_ep"]);
+    data_ = join_vert(vectorise(data_r1) / sqrt(sigma2_ep_.first),
+                      vectorise(data_r2) / sqrt(sigma2_ep_.second));
   }
 
   double EvaluateWithGradient(const arma::mat &theta_unrestrict,
