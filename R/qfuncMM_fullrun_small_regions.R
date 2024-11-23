@@ -128,9 +128,7 @@ qfuncMM_fullrun_small_regions <- function(region_list, voxel_coords,
     }
   }
 
-  if (verbose) {
-    message("Finished stage 2.")
-  }
-  stage1_regional <- do.call(rbind, lapply(stage1_info, \(x) x$stage))
+  message("Finished stage 2.")
+  stage1_regional <- do.call(rbind, lapply(stage1_info, \(x) x$stage1))
   list(rho = rho, rho_eblue = rho_eblue, rho_ca = rho_ca, stage1 = stage1_regional, stage2 = stage2_inter)
 }
