@@ -2,23 +2,25 @@
 #'
 #' @noRd
 
-fit_inter_model <- function(region1_info, region2_info, kernel_type_id, rho_init, verbose) {
+fit_inter_model <- function(region1_info, region2_info, kernel_type_id, init, verbose) {
   softminus <- function(x) {
-    log(exp(x) - 1)
+    ifelse(x > 10, x, log(exp(x) - 1))
   }
 
   logit <- function(x, lower, upper) {
     x <- (x - lower) / (upper - lower)
-    return(log(x) - log(1 - x))
+    return(log(x / (1 - x)))
   }
 
   m <- length(region1_info$eblue)
   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
 
-  # Use the EBLUE as a reasonable initialization.
-  init <- c(logit(rho_init, -1, 1), softminus(1), softminus(1), 0, softminus(0.1))
+  init <- c(
+    logit(init["rho"], -1, 1),
+    softminus(init[get("stage2_paramlist_components", qfuncMM_pkg_env)])
+  )
   if (region1_info$cov_setting == "diag_time" || region2_info$cov_setting == "diag_time") {
-    init <- c(logit(rho_init, -1, 1), softminus(1), softminus(1))
+    init <- init[1:3]
   }
 
   result <- opt_inter(

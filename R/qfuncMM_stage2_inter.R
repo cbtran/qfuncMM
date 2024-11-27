@@ -60,7 +60,8 @@ qfuncMM_stage2_inter <- function(
     j1$subject_id, j1$region_uniqid, j2$region_uniqid
   ))
 
-  inter_result <- fit_inter_model(j1, j2, kernel_type_id, rho_eblue, verbose)
+  init <- stage2_init(j1, j2)
+  inter_result <- fit_inter_model(j1, j2, kernel_type_id, init, verbose)
   theta <- inter_result$theta
 
   outlist <- list(
