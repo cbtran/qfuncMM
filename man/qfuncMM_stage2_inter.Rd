@@ -9,6 +9,8 @@ qfuncMM_stage2_inter(
   stage1_region1_outfile,
   stage1_region2_outfile,
   out_dir,
+  m_seq,
+  st_scale,
   kernel_type = "matern_5_2",
   overwrite = FALSE,
   verbose = FALSE
@@ -20,6 +22,10 @@ qfuncMM_stage2_inter(
 \item{stage1_region2_outfile}{JSON file from stage 1 for region 2.}
 
 \item{out_dir}{Output directory.}
+
+\item{m_seq}{Number of neighbors to use in Vecchia approximation.}
+
+\item{st_scale}{Scaling factor for spatial and temporal dimensions.}
 
 \item{kernel_type}{Choice of spatial kernel.}
 

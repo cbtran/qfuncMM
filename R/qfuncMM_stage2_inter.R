@@ -4,6 +4,8 @@
 #' @param stage1_region1_outfile JSON file from stage 1 for region 1.
 #' @param stage1_region2_outfile JSON file from stage 1 for region 2.
 #' @param out_dir Output directory.
+#' @param m_seq Number of neighbors to use in Vecchia approximation.
+#' @param st_scale Scaling factor for spatial and temporal dimensions.
 #' @param kernel_type Choice of spatial kernel.
 #' @param overwrite Overwrite existing output file.
 #' @param verbose Print progress messages.
@@ -13,7 +15,7 @@
 #' @importFrom jsonlite toJSON read_json
 #' @export
 qfuncMM_stage2_inter <- function(
-    stage1_region1_outfile, stage1_region2_outfile, out_dir,
+    stage1_region1_outfile, stage1_region2_outfile, out_dir, m_seq, st_scale,
     kernel_type = "matern_5_2", overwrite = FALSE, verbose = FALSE) {
   kernel_type_id <- kernel_dict(kernel_type)
 
@@ -60,9 +62,10 @@ qfuncMM_stage2_inter <- function(
     j1$subject_id, j1$region_uniqid, j2$region_uniqid
   ))
 
-  init <- stage2_init(j1, j2)
-  inter_result <- fit_inter_model(j1, j2, kernel_type_id, init, verbose)
-  theta <- inter_result$theta
+  # init <- stage2_init(j1, j2)
+  # inter_result <- fit_inter_model(j1, j2, kernel_type_id, init, verbose)
+  inter_result <- GpGp::fit_qfuncmm(j1, j2, st_scale = st_scale, m_seq = m_seq)
+  theta <- inter_result$covparms
 
   outlist <- list(
     subject_id = j1$subject_id,
@@ -79,7 +82,8 @@ qfuncMM_stage2_inter <- function(
       list(rho = theta["rho"], rho_eblue = rho_eblue, rho_ca = rho_ca),
       as.list(theta[get("stage2_paramlist_components", qfuncMM_pkg_env)])
     )
-  outlist$objval <- inter_result$objval
+  outlist$loglik <- inter_result$loglik
+  outlist$mu <- inter_result$betahat
   out_json <- jsonlite::toJSON(outlist, auto_unbox = TRUE, pretty = TRUE, digits = I(10))
   write(out_json, out_file)
   message(

@@ -72,7 +72,9 @@ qfuncMM_stage1_intra <- function(
 
   start_time <- Sys.time()
   # Standardize the data matrices
-  region_data_std <- (region_data - mean(region_data)) / stats::sd(region_data)
+  mu_center <- mean(region_data)
+  mu_scale <- stats::sd(region_data)
+  region_data_std <- (region_data - mu_center) / mu_scale
   inits <- stage1_init(region_data_std, region_coords, num_init, FALSE)
 
   if (cov_setting %in% c("auto", "noisy")) {
@@ -159,6 +161,7 @@ qfuncMM_stage1_intra <- function(
     objval = intra$objval,
     eblue = as.numeric(intra$eblue),
     data_std = region_data_std,
+    mu_center = mu_center, mu_scale = mu_scale,
     coords = region_coords
   )
 
