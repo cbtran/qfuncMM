@@ -18,6 +18,7 @@ qfuncMM_stage1_intra(
   noisy_num_init_tries = as.integer(num_init/2),
   log_var_ratio_threshold = 5,
   psi_threshold = 0.5,
+  save_data_and_coords = TRUE,
   overwrite = FALSE,
   verbose = FALSE
 )
@@ -46,6 +47,8 @@ qfuncMM_stage1_intra(
 \item{log_var_ratio_threshold}{Threshold for log(var_ratio) to switch between 'noisy' and 'noiseless' models.}
 
 \item{psi_threshold}{Threshold for psi to switch between 'noisy' and 'noiseless' models.}
+
+\item{save_data_and_coords}{Save standardized data and coordinates to output.}
 
 \item{overwrite}{Overwrite existing output file.}
 

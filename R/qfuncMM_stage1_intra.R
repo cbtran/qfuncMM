@@ -13,6 +13,7 @@
 #' @param noisy_num_init_tries Number of initializations to try for the noisy model before switching to noiseless.
 #' @param log_var_ratio_threshold Threshold for log(var_ratio) to switch between 'noisy' and 'noiseless' models.
 #' @param psi_threshold Threshold for psi to switch between 'noisy' and 'noiseless' models.
+#' @param save_data_and_coords Save standardized data and coordinates to output.
 #' @param overwrite Overwrite existing output file.
 #' @param verbose Print progress messages.
 #'
@@ -28,6 +29,7 @@ qfuncMM_stage1_intra <- function(
     noisy_num_init_tries = as.integer(num_init / 2),
     log_var_ratio_threshold = 5,
     psi_threshold = 0.5,
+    save_data_and_coords = TRUE,
     overwrite = FALSE,
     verbose = FALSE) {
   region_uniqid <- as.integer(region_uniqid)
@@ -160,10 +162,13 @@ qfuncMM_stage1_intra <- function(
     stage1 = as.list(intra$intra_param),
     objval = intra$objval,
     eblue = as.numeric(intra$eblue),
-    data_std = region_data_std,
-    mu_center = mu_center, mu_scale = mu_scale,
-    coords = region_coords
+    mu_center = mu_center, mu_scale = mu_scale
   )
+
+  if (save_data_and_coords) {
+    outlist$data_std <- region_data_std
+    outlist$coords <- region_coords
+  }
 
   out_json <- jsonlite::toJSON(outlist, auto_unbox = TRUE, pretty = TRUE, digits = I(10))
   write(out_json, out_file)
