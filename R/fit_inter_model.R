@@ -1,7 +1,3 @@
-#' Stage 2: Fit inter-regional model given pair of regions
-#'
-#' @noRd
-
 fit_inter_model <- function(region1_info, region2_info, kernel_type_id, init, verbose) {
   softminus <- function(x) {
     ifelse(x > 10, x, log(exp(x) - 1))
@@ -19,9 +15,6 @@ fit_inter_model <- function(region1_info, region2_info, kernel_type_id, init, ve
     logit(init["rho"], -1, 1),
     softminus(init[get("stage2_paramlist_components", qfuncMM_pkg_env)])
   )
-  if (region1_info$cov_setting == "diag_time" || region2_info$cov_setting == "diag_time") {
-    init <- init[1:3]
-  }
 
   result <- opt_inter(
     theta_init = init,
@@ -40,5 +33,5 @@ fit_inter_model <- function(region1_info, region2_info, kernel_type_id, init, ve
 
   theta <- result$theta
   names(theta) <- get("stage2_paramlist", qfuncMM_pkg_env)
-  return(list(theta = theta, objval = result$objval))
+  return(list(covparms = theta, loglik = -result$objval))
 }

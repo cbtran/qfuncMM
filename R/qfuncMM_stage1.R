@@ -21,7 +21,7 @@
 #' @importFrom Rcpp sourceCpp
 #' @importFrom jsonlite toJSON
 #' @export
-qfuncMM_stage1_intra <- function(
+qfuncMM_stage1 <- function(
     subject_id, region_uniqid, region_name, region_data, region_coords, out_dir,
     kernel_type = "matern_5_2",
     cov_setting = c("auto", "noisy", "noiseless"),
