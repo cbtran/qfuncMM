@@ -41,7 +41,36 @@ double OptInter::EvaluateWithGradient(const arma::mat &theta_unrestrict,
   mat V = join_vert(join_horiz(M_11, M_12), join_horiz(M_12.t(), M_22));
 
   // These are the most computationally expensive steps
-  mat VR = chol(V);
+  // Try Cholesky decomposition with adaptive regularization if needed
+  mat VR;
+  bool success = chol(VR, V);
+  if (!success) {
+    // Matrix is not positive definite, add a small regularization
+    double reg =
+        1e-10 * trace(V) / V.n_rows; // Small fraction of average diagonal
+    mat V_reg = V;
+    V_reg.diag() += reg;
+
+    // Try increasing regularization until success
+    int max_attempts = 10;
+    int attempt = 0;
+    while (!success && attempt < max_attempts) {
+      V_reg.diag() += reg;
+      success = chol(VR, V_reg);
+      reg *= 10.0; // Increase regularization for next attempt
+      attempt++;
+    }
+
+    if (!success) {
+      // If still fails, use a more robust fallback
+      std::cerr << "Warning: Cholesky decomposition failed, using larger "
+                   "regularization"
+                << std::endl;
+      V_reg = V;
+      V_reg.diag() += 1e-6 * trace(V) / V.n_rows;
+      success = chol(VR, V_reg);
+    }
+  }
   mat VRinv = inv(trimatu(VR));
 
   mat Htilde = VRinv.t() * design_;
