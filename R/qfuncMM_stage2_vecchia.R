@@ -22,14 +22,31 @@ qfuncMM_stage2_vecchia <- function(
     stage1_region1_outfile, stage1_region2_outfile, out_dir,
     m_seq = 100, st_scale = c(10, 1), data_and_coords = NULL,
     overwrite = FALSE, verbose = FALSE) {
+  region1_data <- jsonlite::read_json(stage1_region1_outfile, simplifyVector = TRUE)
+  region2_data <- jsonlite::read_json(stage1_region2_outfile, simplifyVector = TRUE)
+
+  if (region1_data$stage1$sigma2_ep == "NA") {
+    region1_data$stage1$sigma2_ep <- NA
+  }
+  if (region2_data$stage1$sigma2_ep == "NA") {
+    region2_data$stage1$sigma2_ep <- NA
+  }
+
+  # Set data and coordinates if provided
+  if (!is.null(data_and_coords)) {
+    j1$data_std <- data_and_coords$data_std1
+    j2$data_std <- data_and_coords$data_std2
+    j1$coords <- data_and_coords$coords1
+    j2$coords <- data_and_coords$coords2
+  }
+
   run_stage2(
-    stage1_region1_outfile = stage1_region1_outfile,
-    stage1_region2_outfile = stage1_region2_outfile,
+    region1_data,
+    region2_data,
     out_dir = out_dir,
     method = "vecchia",
     m_seq = m_seq,
     st_scale = st_scale,
-    data_and_coords = data_and_coords,
     overwrite = overwrite,
     verbose = verbose
   )

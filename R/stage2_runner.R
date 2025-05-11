@@ -1,20 +1,29 @@
 # Internal function for stage 2 inter-regional analysis
 # Not exported or documented
 run_stage2 <- function(
-    stage1_region1_outfile, stage1_region2_outfile, out_dir,
+    region1_data, region2_data, out_dir,
     method = c("vecchia", "reml"),
-    m_seq = 100, st_scale = c(10, 1), data_and_coords = NULL,
+    m_seq = 100, st_scale = c(10, 1),
     overwrite = FALSE, verbose = FALSE) {
   method <- match.arg(method)
 
-  j1 <- jsonlite::read_json(stage1_region1_outfile, simplifyVector = TRUE)
-  if (j1$stage1$sigma2_ep == "NA") {
-    j1$stage1$sigma2_ep <- NA
+  required_components <- c(
+    "subject_id", "region_uniqid", "region_name",
+    "stage1", "cov_setting", "data_std", "coords", "eblue"
+  )
+  missing_r1 <- setdiff(required_components, names(region1_data))
+  missing_r2 <- setdiff(required_components, names(region2_data))
+
+  if (length(missing_r1) > 0) {
+    stop(sprintf("Region 1 data is missing required components: %s", paste(missing_r1, collapse = ", ")))
   }
-  j2 <- jsonlite::read_json(stage1_region2_outfile, simplifyVector = TRUE)
-  if (j2$stage1$sigma2_ep == "NA") {
-    j2$stage1$sigma2_ep <- NA
+  if (length(missing_r2) > 0) {
+    stop(sprintf("Region 2 data is missing required components: %s", paste(missing_r2, collapse = ", ")))
   }
+
+  j1 <- region1_data
+  j2 <- region2_data
+
   if (j1$subject_id != j2$subject_id) {
     stop(sprintf(
       "Mismatched subject IDs '%s' and '%s'. The two regions must be from the same subject and exam.",
@@ -42,14 +51,6 @@ run_stage2 <- function(
     if (file.exists(out_file) && !overwrite) {
       stop(sprintf("Output file '%s' already exists. Set 'overwrite' to TRUE to overwrite.", out_file))
     }
-  }
-
-  # Set data and coordinates if provided
-  if (!is.null(data_and_coords)) {
-    j1$data_std <- data_and_coords$data_std1
-    j2$data_std <- data_and_coords$data_std2
-    j1$coords <- data_and_coords$coords1
-    j2$coords <- data_and_coords$coords2
   }
 
   start_time <- Sys.time()
