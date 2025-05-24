@@ -28,10 +28,10 @@ qfuncMM_stage2_reml <- function(
 
   # Set data and coordinates if provided
   if (!is.null(data_and_coords)) {
-    j1$data_std <- data_and_coords$data_std1
-    j2$data_std <- data_and_coords$data_std2
-    j1$coords <- data_and_coords$coords1
-    j2$coords <- data_and_coords$coords2
+    region1_data$data_std <- data_and_coords$data_std1
+    region2_data$data_std <- data_and_coords$data_std2
+    region1_data$coords <- data_and_coords$coords1
+    region2_data$coords <- data_and_coords$coords2
   }
 
   run_stage2(

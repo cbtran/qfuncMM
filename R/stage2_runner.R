@@ -1,5 +1,5 @@
 # Internal function for stage 2 inter-regional analysis
-# Not exported or documented
+# Not exported nor documented
 run_stage2 <- function(
     region1_data, region2_data, out_dir,
     method = c("vecchia", "reml"),
