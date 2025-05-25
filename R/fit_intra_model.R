@@ -7,7 +7,7 @@ fit_intra_model <- function(
     voxel_coords,
     inits,
     kernel_type_id,
-    cov_setting = c("noisy", "diag_time", "noiseless", "noiseless_profiled"),
+    cov_setting = c("noisy", "noiseless"),
     verbose = FALSE) {
   cov_setting <- match.arg(cov_setting)
   m <- nrow(region_mx)

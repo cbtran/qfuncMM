@@ -37,24 +37,15 @@ Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
   CovSetting cov_setting = static_cast<CovSetting>(cov_setting_id);
 
   // phi, tau, k, nugget
-  // or phi, tau, nugget_over_k if profiled
   arma::mat theta_unrestrict = softminus(theta_init);
   arma::mat dist_sqrd_mat = squared_distance(voxel_coords);
 
   // Construct the objective function.
   std::unique_ptr<IOptIntra> opt_intra;
   switch (cov_setting) {
-  case CovSetting::noiseless_profiled:
-    opt_intra = std::make_unique<OptIntraNoiselessProfiled>(
-        X_region, dist_sqrd_mat, time_sqrd_mat, kernel_type);
-    break;
   case CovSetting::noiseless:
     opt_intra = std::make_unique<OptIntraNoiseless>(X_region, dist_sqrd_mat,
                                                     time_sqrd_mat, kernel_type);
-    break;
-  case CovSetting::diag_time:
-    opt_intra = std::make_unique<OptIntraDiagTime>(X_region, dist_sqrd_mat,
-                                                   time_sqrd_mat, kernel_type);
     break;
   default:
     opt_intra = std::make_unique<OptIntra>(X_region, dist_sqrd_mat,
@@ -77,14 +68,6 @@ Rcpp::List opt_intra(const arma::vec &theta_init, const arma::mat &X_region,
     Rcpp::stop("Optimization failed " + std::string(re.what()));
   }
   vec theta = softplus(theta_unrestrict);
-  if (cov_setting == CovSetting::noiseless_profiled) {
-    vec theta_orig = arma::zeros(4);
-    theta_orig(0) = theta(0);
-    theta_orig(1) = theta(1);
-    theta_orig(2) = opt_intra->GetKStar();
-    theta_orig(3) = theta(2) * theta_orig(2);
-    theta = theta_orig;
-  }
 
   // Compute average of spatial covariance
   double psi = accu(matern_5_2(dist_sqrd_mat, theta(0))) / dist_sqrd_mat.n_elem;
@@ -179,19 +162,8 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &data_r1,
           stage1_r2["nugget_gamma"] *
               arma::eye(data_r2.n_rows, data_r2.n_rows));
 
-  bool any_diag_time = cov_setting1 == CovSetting::diag_time ||
-                       cov_setting2 == CovSetting::diag_time;
-  // Construct the objective function.
-  std::unique_ptr<IOptInter> opt_inter;
-  if (any_diag_time) {
-    opt_inter = std::make_unique<OptInterDiagTime>(
-        data_r1, data_r2, stage1_r1, stage1_r2, lambda_region1, lambda_region2,
-        cov_setting1, cov_setting2, time_sqrd_mat);
-  } else {
-    opt_inter = std::make_unique<OptInter>(
-        data_r1, data_r2, stage1_r1, stage1_r2, lambda_region1, lambda_region2,
-        cov_setting1, cov_setting2, time_sqrd_mat);
-  }
+  OptInter opt_inter(data_r1, data_r2, stage1_r1, stage1_r2, lambda_region1,
+                     lambda_region2, cov_setting1, cov_setting2, time_sqrd_mat);
 
   ens::L_BFGS optimizer(10);
   optimizer.MaxIterations() = 50;
@@ -200,10 +172,10 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &data_r1,
 
   ens::StoreBestCoordinates<mat> cb;
   if (verbose) {
-    optimizer.Optimize(*opt_inter, theta_vec, ens::GradClipByNorm(100),
+    optimizer.Optimize(opt_inter, theta_vec, ens::GradClipByNorm(100),
                        ens::Report(1), cb);
   } else {
-    optimizer.Optimize(*opt_inter, theta_vec, ens::GradClipByNorm(100), cb);
+    optimizer.Optimize(opt_inter, theta_vec, ens::GradClipByNorm(100), cb);
   }
 
   vec best(cb.BestCoordinates());
@@ -211,17 +183,11 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &data_r1,
   result(0) = sigmoid_inv(best(0), -1, 1); // rho
   result(1) = softplus(best(1));           // kEta1
   result(2) = softplus(best(2));           // kEta2
-
-  if (any_diag_time) {
-    result(3) = 0; // tauEta
-    result(4) = 1; // nuggetEta
-  } else {
-    result(3) = softplus(best(3)); // tauEta
-    result(4) = softplus(best(4)); // nuggetEta
-  }
+  result(3) = softplus(best(3));           // tauEta
+  result(4) = softplus(best(4));           // nuggetEta
 
   std::pair<double, double> sigma2_ep_hat =
-      opt_inter->GetNoiseVarianceEstimates();
+      opt_inter.GetNoiseVarianceEstimates();
   vec sigma2_ep = {sigma2_ep_hat.first, sigma2_ep_hat.second};
 
   return Rcpp::List::create(Rcpp::Named("theta") = result,

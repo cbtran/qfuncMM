@@ -67,26 +67,4 @@ public:
   double Evaluate(const arma::mat &theta) override;
 };
 
-class OptInterDiagTime : public IOptInter {
-public:
-  OptInterDiagTime(const arma::mat &data_r1, const arma::mat &data_r2,
-                   const Rcpp::NumericVector &stage1_r1,
-                   const Rcpp::NumericVector &stage1_r2,
-                   const arma::mat &lambda_r1, const arma::mat &lambda_r2,
-                   CovSetting cov_setting_r1, CovSetting cov_setting_r2,
-                   const arma::mat &time_sqrd)
-      : IOptInter(data_r1, data_r2, lambda_r1, lambda_r2, cov_setting_r1,
-                  cov_setting_r2, time_sqrd) {
-
-    sigma2_ep_ = std::make_pair(stage1_r1["sigma2_ep"], stage1_r2["sigma2_ep"]);
-    data_ = join_vert(vectorise(data_r1) / sqrt(sigma2_ep_.first),
-                      vectorise(data_r2) / sqrt(sigma2_ep_.second));
-  }
-
-  double EvaluateWithGradient(const arma::mat &theta_unrestrict,
-                              arma::mat &gradient) override;
-
-  double Evaluate(const arma::mat &theta) override;
-};
-
 #endif

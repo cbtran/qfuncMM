@@ -63,9 +63,8 @@ double OptInter::EvaluateWithGradient(const arma::mat &theta_unrestrict,
 
     if (!success) {
       // If still fails, use a more robust fallback
-      std::cerr << "Warning: Cholesky decomposition failed, using larger "
-                   "regularization"
-                << std::endl;
+      Rcpp::Rcout << "Warning: Cholesky decomposition failed, using larger "
+                     "regularization.\n";
       V_reg = V;
       V_reg.diag() += 1e-6 * trace(V) / V.n_rows;
       success = chol(VR, V_reg);

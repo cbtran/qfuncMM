@@ -50,15 +50,6 @@ public:
                               arma::mat &gradient) override;
 };
 
-class OptIntraDiagTime : public IOptIntra {
-public:
-  OptIntraDiagTime(const arma::mat &data, const arma::mat &distSqrd,
-                   const arma::mat &timeSqrd, KernelType kernelType);
-
-  double EvaluateWithGradient(const arma::mat &theta,
-                              arma::mat &gradient) override;
-};
-
 class OptIntraNoiseless : public IOptIntra {
 public:
   OptIntraNoiseless(const arma::mat &data, const arma::mat &distSqrd,
@@ -68,19 +59,5 @@ public:
   double EvaluateWithGradient(const arma::mat &theta,
                               arma::mat &gradient) override;
 };
-
-class OptIntraNoiselessProfiled : public IOptIntra {
-  double kstar_;
-public:
-  OptIntraNoiselessProfiled(const arma::mat &data, const arma::mat &distSqrd,
-                    const arma::mat &timeSqrd, KernelType kernelType,
-                    bool verbose = true);
-
-  double EvaluateWithGradient(const arma::mat &theta,
-                              arma::mat &gradient) override;
-
-  double GetKStar() override;
-};
-
 
 #endif
