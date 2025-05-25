@@ -15,8 +15,13 @@ devtools::install_github("cbtran/qfuncMM")
 The package includes simulated data for testing. To run the method on the example data, run the following:
 ```r
 library(qfuncMM)
-result <- qfuncMM(qfunc_sim_data$data, qfunc_sim_data$coords)
-result$rho
+out_dir <- "./test_out"
+qfuncMM_stage1(1, 1, "region1", qfunc_sim_data$data[[1]], qfunc_sim_data$coords[[1]], out_dir)
+qfuncMM_stage1(1, 2, "region2", qfunc_sim_data$data[[2]], qfunc_sim_data$coords[[2]], out_dir)
+outfile1 <- file.path(out_dir, file.path("qfuncMM_stage1_intra_region_1_1.json"))
+outfile2 <- file.path(out_dir, file.path("qfuncMM_stage1_intra_region_1_2.json"))
+result <- qfuncMM_stage2_reml(outfile1, outfile2, out_dir)
+print(paste("Estimated rho:", round(result$stage2$rho, 3)))
 ```
 
 Code to reproduce simulation results from the paper is available on github at [https://github.com/cbtran/qfuncMM-reproducible](https://github.com/cbtran/qfuncMM-reproducible).
