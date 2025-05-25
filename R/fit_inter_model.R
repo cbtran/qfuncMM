@@ -1,54 +1,37 @@
-#' Stage 2: Fit inter-regional model given pair of regions
-#'
-#' @param region1_mx Data matrix of signals of region 1
-#' @param voxel_coords_1 coordinates of voxels in region 1
-#' @param region2_mx Data matrix of signals of region 2
-#' @param voxel_coords_2 coordinates of voxels in region 2
-#' @param time_sqrd_mat Temporal squared distance matrix
-#' @param stage1_regional Estimated parameters of intra-regional models from 2 regions
-#' @param kernel_type_id Choice of spatial kernel
-#' @return Estimated stage 2 parameters
-#' @noRd
-
-fit_inter_model <- function(
-    region1_mx,
-    voxel_coords_1,
-    region2_mx,
-    voxel_coords_2,
-    time_sqrd_mat,
-    region1_stage1,
-    region2_stage1,
-    kernel_type_id) {
-
-  ca <- compute_ca(region1_mx, region2_mx)
-  # Parameter list: rho, kEta1, kEta2, tauEta, nugget
+fit_inter_model <- function(region1_info, region2_info, kernel_type_id, init, verbose) {
   softminus <- function(x) {
-    log(exp(x) - 1)
+    ifelse(x > 10, x, log(exp(x) - 1))
   }
-  # Reasonable initiliazation
-  init <- c(ca, softminus(1), softminus(1), 0, softminus(0.1))
 
-  result <- opt_inter(theta_init = init,
-                      dataRegion1 = region1_mx,
-                      dataRegion2 = region2_mx,
-                      voxel_coords_1 = voxel_coords_1,
-                      voxel_coords_2 = voxel_coords_2,
-                      time_sqrd_mat = time_sqrd_mat,
-                      stage1ParamsRegion1 = region1_stage1,
-                      stage1ParamsRegion2 = region2_stage1,
-                      kernel_type_id = kernel_type_id)
+  logit <- function(x, lower, upper) {
+    x <- (x - lower) / (upper - lower)
+    return(log(x / (1 - x)))
+  }
 
-  result <- as.list(c(result$theta, result$var_noise))
-  names(result) <- c("rho", "k_eta1", "k_eta2", "tau_eta",
-                     "nugget_eta", "var_noise1", "var_noise2")
-  return(result)
-}
+  m <- length(region1_info$eblue)
+  time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
 
-# Compute the correlation of averages for two regions
-compute_ca <- function(region1_mx, region2_mx) {
-  r1avg <- apply(region1_mx, 1, mean)
-  r2avg <- apply(region2_mx, 1, mean)
-  r1avgavg <- r1avg - mean(r1avg)
-  r2avgavg <- r2avg - mean(r2avg)
-  sum(r1avgavg * r2avgavg) / (stats::sd(r1avg) * stats::sd(r2avg) * length(r1avg))
+  init <- c(
+    logit(init["rho"], -1, 1),
+    softminus(init[get("stage2_paramlist_components", qfuncMM_pkg_env)])
+  )
+
+  result <- opt_inter(
+    theta_init = init,
+    data_r1 = region1_info$data_std,
+    data_r2 = region2_info$data_std,
+    coords_r1 = region1_info$coords,
+    coords_r2 = region2_info$coords,
+    time_sqrd_mat = time_sqrd_mat,
+    stage1_r1 = unlist(region1_info$stage1),
+    stage1_r2 = unlist(region2_info$stage1),
+    cov_setting_id1 = cov_setting_dict(region1_info$cov_setting),
+    cov_setting_id2 = cov_setting_dict(region2_info$cov_setting),
+    kernel_type_id = kernel_type_id,
+    verbose = verbose
+  )
+
+  theta <- result$theta
+  names(theta) <- get("stage2_paramlist", qfuncMM_pkg_env)
+  return(list(covparms = theta, loglik = -result$objval))
 }

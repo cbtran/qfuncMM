@@ -20,7 +20,6 @@ NULL
 #' @param B Right matrix
 #' @param v vector
 #' @return Kronecker matrix-vector product
-#' @references Willi-Hans Steeb and Yorick Hardy. Matrix calculus and Kronecker product: a practical approach to linear and multilinear algebra. World Scientific Publishing Company, 2011.
 #' @noRd
 NULL
 
@@ -30,12 +29,14 @@ NULL
 #' @param voxel_coords L x 3 matrix of voxel coordinates
 #' @param time_sqrd_mat M x M temporal squared distance matrix
 #' @param kernel_type_id Choice of spatial kernel
-#' @return List of 2 components:
-#'   theta: Estimated intra-regional parameters
-#'   var_noise: Estimated noise variance
+#' @param setting Choice of covariance structure
 #' @noRd
-opt_intra <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id) {
-    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id)
+opt_intra <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, cov_setting_id, verbose) {
+    .Call('_qfuncMM_opt_intra', PACKAGE = 'qfuncMM', theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, cov_setting_id, verbose)
+}
+
+eval_stage1_nll <- function(theta, X_region, voxel_coords, time_sqrd_mat, kernel_type_id) {
+    .Call('_qfuncMM_eval_stage1_nll', PACKAGE = 'qfuncMM', theta, X_region, voxel_coords, time_sqrd_mat, kernel_type_id)
 }
 
 #' @title Fit inter-regional model using L-BFGS
@@ -51,10 +52,10 @@ opt_intra <- function(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_
 #' @param kernel_type_id Choice of spatial kernel
 #' @return List of 3 components:
 #'   theta: Estimated inter-regional parameters
-#'   var_noise: Estimated noise variance
+#'   sigma2_ep: Estimated noise variance
 #'   objective: optimal loss (negiatve log-likelihood) found.
 #' @noRd
-opt_inter <- function(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id) {
-    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id)
+opt_inter <- function(theta_init, data_r1, data_r2, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, verbose) {
+    .Call('_qfuncMM_opt_inter', PACKAGE = 'qfuncMM', theta_init, data_r1, data_r2, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, verbose)
 }
 

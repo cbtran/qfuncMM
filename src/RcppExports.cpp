@@ -13,8 +13,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // opt_intra
-Rcpp::List opt_intra(const arma::vec& theta_init, const arma::mat& X_region, const arma::mat& voxel_coords, const arma::mat& time_sqrd_mat, int kernel_type_id);
-RcppExport SEXP _qfuncMM_opt_intra(SEXP theta_initSEXP, SEXP X_regionSEXP, SEXP voxel_coordsSEXP, SEXP time_sqrd_matSEXP, SEXP kernel_type_idSEXP) {
+Rcpp::List opt_intra(const arma::vec& theta_init, const arma::mat& X_region, const arma::mat& voxel_coords, const arma::mat& time_sqrd_mat, int kernel_type_id, int cov_setting_id, bool verbose);
+RcppExport SEXP _qfuncMM_opt_intra(SEXP theta_initSEXP, SEXP X_regionSEXP, SEXP voxel_coordsSEXP, SEXP time_sqrd_matSEXP, SEXP kernel_type_idSEXP, SEXP cov_setting_idSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -23,33 +23,54 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::mat& >::type voxel_coords(voxel_coordsSEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type time_sqrd_mat(time_sqrd_matSEXP);
     Rcpp::traits::input_parameter< int >::type kernel_type_id(kernel_type_idSEXP);
-    rcpp_result_gen = Rcpp::wrap(opt_intra(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id));
+    Rcpp::traits::input_parameter< int >::type cov_setting_id(cov_setting_idSEXP);
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(opt_intra(theta_init, X_region, voxel_coords, time_sqrd_mat, kernel_type_id, cov_setting_id, verbose));
+    return rcpp_result_gen;
+END_RCPP
+}
+// eval_stage1_nll
+Rcpp::List eval_stage1_nll(const arma::vec& theta, const arma::mat& X_region, const arma::mat& voxel_coords, const arma::mat& time_sqrd_mat, int kernel_type_id);
+RcppExport SEXP _qfuncMM_eval_stage1_nll(SEXP thetaSEXP, SEXP X_regionSEXP, SEXP voxel_coordsSEXP, SEXP time_sqrd_matSEXP, SEXP kernel_type_idSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec& >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type X_region(X_regionSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type voxel_coords(voxel_coordsSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type time_sqrd_mat(time_sqrd_matSEXP);
+    Rcpp::traits::input_parameter< int >::type kernel_type_id(kernel_type_idSEXP);
+    rcpp_result_gen = Rcpp::wrap(eval_stage1_nll(theta, X_region, voxel_coords, time_sqrd_mat, kernel_type_id));
     return rcpp_result_gen;
 END_RCPP
 }
 // opt_inter
-Rcpp::List opt_inter(const arma::vec& theta_init, const arma::mat& dataRegion1, const arma::mat& dataRegion2, const arma::mat& voxel_coords_1, const arma::mat& voxel_coords_2, const arma::mat& time_sqrd_mat, const arma::vec& stage1ParamsRegion1, const arma::vec& stage1ParamsRegion2, int kernel_type_id);
-RcppExport SEXP _qfuncMM_opt_inter(SEXP theta_initSEXP, SEXP dataRegion1SEXP, SEXP dataRegion2SEXP, SEXP voxel_coords_1SEXP, SEXP voxel_coords_2SEXP, SEXP time_sqrd_matSEXP, SEXP stage1ParamsRegion1SEXP, SEXP stage1ParamsRegion2SEXP, SEXP kernel_type_idSEXP) {
+Rcpp::List opt_inter(const arma::vec& theta_init, const arma::mat& data_r1, const arma::mat& data_r2, const arma::mat& coords_r1, const arma::mat& coords_r2, const arma::mat& time_sqrd_mat, const Rcpp::NumericVector& stage1_r1, const Rcpp::NumericVector& stage1_r2, int cov_setting_id1, int cov_setting_id2, int kernel_type_id, bool verbose);
+RcppExport SEXP _qfuncMM_opt_inter(SEXP theta_initSEXP, SEXP data_r1SEXP, SEXP data_r2SEXP, SEXP coords_r1SEXP, SEXP coords_r2SEXP, SEXP time_sqrd_matSEXP, SEXP stage1_r1SEXP, SEXP stage1_r2SEXP, SEXP cov_setting_id1SEXP, SEXP cov_setting_id2SEXP, SEXP kernel_type_idSEXP, SEXP verboseSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::vec& >::type theta_init(theta_initSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type dataRegion1(dataRegion1SEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type dataRegion2(dataRegion2SEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type voxel_coords_1(voxel_coords_1SEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type voxel_coords_2(voxel_coords_2SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type data_r1(data_r1SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type data_r2(data_r2SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords_r1(coords_r1SEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type coords_r2(coords_r2SEXP);
     Rcpp::traits::input_parameter< const arma::mat& >::type time_sqrd_mat(time_sqrd_matSEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type stage1ParamsRegion1(stage1ParamsRegion1SEXP);
-    Rcpp::traits::input_parameter< const arma::vec& >::type stage1ParamsRegion2(stage1ParamsRegion2SEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type stage1_r1(stage1_r1SEXP);
+    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type stage1_r2(stage1_r2SEXP);
+    Rcpp::traits::input_parameter< int >::type cov_setting_id1(cov_setting_id1SEXP);
+    Rcpp::traits::input_parameter< int >::type cov_setting_id2(cov_setting_id2SEXP);
     Rcpp::traits::input_parameter< int >::type kernel_type_id(kernel_type_idSEXP);
-    rcpp_result_gen = Rcpp::wrap(opt_inter(theta_init, dataRegion1, dataRegion2, voxel_coords_1, voxel_coords_2, time_sqrd_mat, stage1ParamsRegion1, stage1ParamsRegion2, kernel_type_id));
+    Rcpp::traits::input_parameter< bool >::type verbose(verboseSEXP);
+    rcpp_result_gen = Rcpp::wrap(opt_inter(theta_init, data_r1, data_r2, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, verbose));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_qfuncMM_opt_intra", (DL_FUNC) &_qfuncMM_opt_intra, 5},
-    {"_qfuncMM_opt_inter", (DL_FUNC) &_qfuncMM_opt_inter, 9},
+    {"_qfuncMM_opt_intra", (DL_FUNC) &_qfuncMM_opt_intra, 7},
+    {"_qfuncMM_eval_stage1_nll", (DL_FUNC) &_qfuncMM_eval_stage1_nll, 5},
+    {"_qfuncMM_opt_inter", (DL_FUNC) &_qfuncMM_opt_inter, 12},
     {NULL, NULL, 0}
 };
 
