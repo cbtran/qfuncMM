@@ -316,72 +316,116 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformation(
   mat dAt_dnugget = eye(m_, m_);
 
   // Derivatives wrt stage 1 parameters
-  // Gradients
-  // mat stage1_time1 = rbf(time_sqrd_, tau_gamma1);
-  // mat stage1_time2 = rbf(time_sqrd_, tau_gamma2);
-  // const mat &dB_dk_gamma1 = stage1_time1;
-  // const mat &dB_dk_gamma2 = stage1_time2;
-  // mat dB_dtau_gamma1 = k_gamma1 * rbf_deriv(time_sqrd_, tau_gamma1);
-  // mat dB_dtau_gamma2 = k_gamma2 * rbf_deriv(time_sqrd_, tau_gamma2);
-  // mat dC_dphi_gamma1 =
-  //     get_cor_mat_deriv(KernelType::Matern52, dist_sqrd1, phi_gamma1);
-  // mat dC_dphi_gamma2 =
-  //     get_cor_mat_deriv(KernelType::Matern52, dist_sqrd2, phi_gamma2);
+  mat dB_dk_gamma1 = rbf(time_sqrd_, tau_gamma1);
+  mat dB_dk_gamma2 = rbf(time_sqrd_, tau_gamma2);
+  mat dB_dtau_gamma1 = k_gamma1 * rbf_deriv(time_sqrd_, tau_gamma1);
+  mat dB_dtau_gamma2 = k_gamma2 * rbf_deriv(time_sqrd_, tau_gamma2);
+  mat dC_dphi_gamma1 =
+      get_cor_mat_deriv(KernelType::Matern52, dist_sqrd1, phi_gamma1);
+  mat dC_dphi_gamma2 =
+      get_cor_mat_deriv(KernelType::Matern52, dist_sqrd2, phi_gamma2);
 
   // Stage 1 block diag derivative matrices
-  // std::vector<mat *> s1_Kmats(8);
-  // std::vector<mat *> s1_Amats(8);
-  // c("phi_gamma", "tau_gamma", "k_gamma", "nugget_gamma", "sigma2_ep")
-  // K_matrices[0] = join_vert(join_horiz(dC_dphi_gamma1, zeroL12),
-  //                           join_horiz(zeroL12.t(), zeroL22));
-  // A_matrices[0] = B1;
+  std::vector<mat *> s1_Kmats_r1(4);
+  std::vector<mat *> s1_Amats_r1(4);
 
-  // K_matrices[1] = C
+  std::vector<mat *> s1_Kmats_r2(4);
+  std::vector<mat *> s1_Amats_r2(4);
+
+  // c("phi_gamma", "tau_gamma", "k_gamma", "nugget_gamma")
+  s1_Kmats_r1[0] = &dC_dphi_gamma1;
+  s1_Amats_r1[0] = B1;
+  s1_Kmats_r1[1] = C1;
+  s1_Amats_r1[1] = &dB_dtau_gamma1;
+  s1_Kmats_r1[2] = C1;
+  s1_Amats_r1[2] = &dB_dk_gamma1;
+  s1_Kmats_r1[3] = C1;
+  s1_Amats_r1[3] = &dAt_dnugget;
+
+  s1_Kmats_r2[0] = &dC_dphi_gamma2;
+  s1_Amats_r2[0] = B2;
+  s1_Kmats_r2[1] = C2;
+  s1_Amats_r2[1] = &dB_dtau_gamma2;
+  s1_Kmats_r2[2] = C2;
+  s1_Amats_r2[2] = &dB_dk_gamma2;
+  s1_Kmats_r2[3] = C2;
+  s1_Amats_r2[3] = &dAt_dnugget;
 
   // Store the 5 spatial derivative structures
-  std::vector<mat> K_matrices(5);
-  std::vector<mat *> A_matrices(5);
+  std::vector<mat> s2_Kmats(5);
+  std::vector<mat *> s2_Amats(5);
   // 1. dV/drho = K_rho ⊗ At
-  K_matrices[0] =
+  s2_Kmats[0] =
       join_vert(join_horiz(zeroL11, oneL12 * sqrt(kEta1 * kEta2)),
                 join_horiz(oneL12.t() * sqrt(kEta1 * kEta2), zeroL22));
-  A_matrices[0] = &At;
+  s2_Amats[0] = &At;
 
   // 2. dV/dkEta1 = K_kEta1 ⊗ At
   mat keta1_block = oneL12 * (sqrt(kEta2 / kEta1) * rho * 0.5);
-  K_matrices[1] = join_vert(join_horiz(oneL11, keta1_block),
-                            join_horiz(keta1_block.t(), zeroL22));
-  A_matrices[1] = &At;
+  s2_Kmats[1] = join_vert(join_horiz(oneL11, keta1_block),
+                          join_horiz(keta1_block.t(), zeroL22));
+  s2_Amats[1] = &At;
 
   // 3. dV/dkEta2 = K_kEta2 ⊗ At
   mat keta2_block = oneL12 * (sqrt(kEta1 / kEta2) * rho * 0.5);
-  K_matrices[2] = join_vert(join_horiz(zeroL11, keta2_block),
-                            join_horiz(keta2_block.t(), oneL22));
-  A_matrices[2] = &At;
+  s2_Kmats[2] = join_vert(join_horiz(zeroL11, keta2_block),
+                          join_horiz(keta2_block.t(), oneL22));
+  s2_Amats[2] = &At;
 
   // 4. dV/dtauEta = K_tauEta ⊗ dAt_dtau_eta
-  K_matrices[3] = join_vert(
+  s2_Kmats[3] = join_vert(
       join_horiz(kEta1 * oneL11, sqrt(kEta1 * kEta2) * rho * oneL12),
       join_horiz(sqrt(kEta1 * kEta2) * rho * oneL12.t(), kEta2 * oneL22));
-  A_matrices[3] = &dAt_dtau_eta;
+  s2_Amats[3] = &dAt_dtau_eta;
 
   // 5. dV/dnuggetEta = K_nugget ⊗ dAt_dnugget
-  K_matrices[4] = K_matrices[3]; // Same spatial structure as tauEta
-  A_matrices[4] = &dAt_dnugget;
+  s2_Kmats[4] = s2_Kmats[3]; // Same spatial structure as tauEta
+  s2_Amats[4] = &dAt_dnugget;
 
-  mat fisher_info_mx = zeros(5, 5);
+  // 5 for stage 2, 4 for each stage 1 region
+  int num_param = 13;
+  mat fisher_info_mx = zeros(num_param, num_param);
 
   // Compute Fisher Information Matrix elements:
   // I_ij = trace(V^-1 * dV_i * V^-1 * dV_j) / 2
-  std::vector<mat> Vinv_matrices(5);
-  for (int i = 0; i < 5; i++) {
-    // Compute Vinv * (K_i ⊗ A_i)^T
-    Vinv_matrices[i] = kronecker_mmm(K_matrices[i], *A_matrices[i], Vinv);
+  std::vector<mat> Vinv_components(num_param);
+
+  const mat &Vinv11 = Vinv.submat(0, 0, l1_ * m_ - 1, l1_ * m_ - 1);
+  const mat &Vinv22 =
+      Vinv.submat(l1_ * m_, l1_ * m_, V.n_rows - 1, V.n_cols - 1);
+  for (int i = 0; i < 4; i++) {
+    // Compute Vinv * (K_i ⊗ A_i)^T for stage 1 region 1
+    mat upper_left = kronecker_mmm(*s1_Kmats_r1[i], *s1_Amats_r1[i], Vinv11);
+    Vinv_components[i] = upper_left;
+
+    mat lower_right = kronecker_mmm(*s1_Kmats_r2[i], *s1_Amats_r2[i], Vinv22);
+    Vinv_components[i + 4] = lower_right;
   }
 
   for (int i = 0; i < 5; i++) {
-    for (int j = i; j < 5; j++) {
-      fisher_info_mx(i, j) = trace(Vinv_matrices[i] * Vinv_matrices[j]) / 2.0;
+    // Compute Vinv * (K_i ⊗ A_i)^T
+    Vinv_components[i + 8] = kronecker_mmm(s2_Kmats[i], *s2_Amats[i], Vinv);
+  }
+
+  for (int i = 0; i < num_param; i++) {
+    for (int j = i; j < num_param; j++) {
+      if (i < 4 && 4 <= j && j < 8) {
+        // Cross-terms between stage 1 params of different regions are zero
+        fisher_info_mx(i, j) = 0;
+        fisher_info_mx(j, i) = 0;
+        continue;
+      }
+      mat right;
+      if (i < 4 && j >= 8) {
+        // Extract the relevant submatrices for stage 2
+        right = Vinv_components[j].submat(0, 0, l1_ * m_ - 1, l1_ * m_ - 1);
+      } else if (i < 8 && j >= 8) {
+        right = Vinv_components[j].submat(l1_ * m_, l1_ * m_, Vinv.n_rows - 1,
+                                          Vinv.n_cols - 1);
+      } else {
+        right = Vinv_components[j];
+      }
+      fisher_info_mx(i, j) = trace(Vinv_components[i] * right) / 2.0;
       if (i != j) {
         fisher_info_mx(j, i) = fisher_info_mx(i, j);
       }
@@ -389,7 +433,9 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformation(
   }
 
   Rcpp::CharacterVector param_names(
-      {"rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta"});
+      {"phi_gamma1", "tau_gamma1", "k_gamma1", "nugget_gamma1", "phi_gamma2",
+       "tau_gamma2", "k_gamma2", "nugget_gamma2", "rho", "k_eta1", "k_eta2",
+       "tau_eta", "nugget_eta"});
   Rcpp::NumericMatrix r_matrix = Rcpp::wrap(fisher_info_mx);
   r_matrix.attr("dimnames") = Rcpp::List::create(param_names, param_names);
 

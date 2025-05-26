@@ -234,10 +234,14 @@ get_fisher_info(const arma::vec &theta, const arma::mat &data_r1,
   OptInter opt_inter(data_r1, data_r2, stage1_r1, stage1_r2, lambda_region1,
                      lambda_region2, cov_setting1, cov_setting2, time_sqrd_mat);
 
-  mat zeros = arma::zeros<mat>(2, 4);
-  Rcpp::NumericMatrix fisher_info =
-      opt_inter.ComputeFisherInformation(zeros, theta_vec, sqrd_dist_region1,
-                                         sqrd_dist_region2, &C1, &B1, &C2, &B2);
+  mat stage1_params(2, 4);
+  stage1_params.row(0) = {stage1_r1["phi_gamma"], stage1_r1["tau_gamma"],
+                          stage1_r1["k_gamma"], stage1_r1["nugget_gamma"]};
+  stage1_params.row(1) = {stage1_r2["phi_gamma"], stage1_r2["tau_gamma"],
+                          stage1_r2["k_gamma"], stage1_r2["nugget_gamma"]};
+  Rcpp::NumericMatrix fisher_info = opt_inter.ComputeFisherInformation(
+      stage1_params, theta_vec, sqrd_dist_region1, sqrd_dist_region2, &C1, &B1,
+      &C2, &B2);
 
   return fisher_info;
 }
