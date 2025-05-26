@@ -222,17 +222,30 @@ double OptInter::Evaluate(const arma::mat &theta_unrestrict) {
   return negLL;
 }
 
-// Compute Fisher Information Matrix for Stage 2 parameters
-Rcpp::NumericMatrix OptInter::ComputeFisherInformation(const arma::mat &theta) {
+// Compute Fisher Information Matrix for all variance components
+Rcpp::NumericMatrix
+OptInter::ComputeFisherInformation(const arma::mat &theta_stage1,
+                                   const arma::mat &theta_stage2) {
   using namespace arma;
 
-  // theta parameter list:
+  // stage1 parameter list:
+  // phi, tau, k, nugget
+  double phi_gamma1 = theta_stage1(0, 0);
+  double tau_gamma1 = theta_stage1(0, 1);
+  double k_gamma1 = theta_stage1(0, 2);
+  double nugget_gamma1 = theta_stage1(0, 3);
+  double phi_gamma2 = theta_stage1(1, 0);
+  double tau_gamma2 = theta_stage1(1, 1);
+  double k_gamma2 = theta_stage1(1, 2);
+  double nugget_gamma2 = theta_stage1(1, 3);
+
+  // stage2 parameter list:
   // rho, kEta1, kEta2, tauEta, nugget
-  double rho = theta(0);
-  double kEta1 = theta(1);
-  double kEta2 = theta(2);
-  double tauEta = theta(3);
-  double nuggetEta = theta(4);
+  double rho = theta_stage2(0);
+  double kEta1 = theta_stage2(1);
+  double kEta2 = theta_stage2(2);
+  double tauEta = theta_stage2(3);
+  double nuggetEta = theta_stage2(4);
 
   // A Matrix
   mat At = rbf(time_sqrd_, tauEta);
@@ -291,62 +304,49 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformation(const arma::mat &theta) {
 
   // Store the 5 spatial derivative structures
   std::vector<mat> K_matrices(5);
-  std::vector<mat> A_matrices(5);
+  std::vector<mat *> A_matrices(5);
 
   // 1. dV/drho = K_rho ⊗ At
   K_matrices[0] =
-      join_vert(join_horiz(zeroL11, ones(l1_, l2_) * sqrt(kEta1 * kEta2)),
-                join_horiz(ones(l2_, l1_) * sqrt(kEta1 * kEta2), zeroL22));
-  A_matrices[0] = At;
+      join_vert(join_horiz(zeroL11, oneL12 * sqrt(kEta1 * kEta2)),
+                join_horiz(oneL12.t() * sqrt(kEta1 * kEta2), zeroL22));
+  A_matrices[0] = &At;
 
   // 2. dV/dkEta1 = K_kEta1 ⊗ At
-  mat keta1_block = ones(l1_, l2_) * (sqrt(kEta2 / kEta1) * rho * 0.5);
+  mat keta1_block = oneL12 * (sqrt(kEta2 / kEta1) * rho * 0.5);
   K_matrices[1] = join_vert(join_horiz(oneL11, keta1_block),
                             join_horiz(keta1_block.t(), zeroL22));
-  A_matrices[1] = At;
+  A_matrices[1] = &At;
 
   // 3. dV/dkEta2 = K_kEta2 ⊗ At
-  mat keta2_block = ones(l1_, l2_) * (sqrt(kEta1 / kEta2) * rho * 0.5);
+  mat keta2_block = oneL12 * (sqrt(kEta1 / kEta2) * rho * 0.5);
   K_matrices[2] = join_vert(join_horiz(zeroL11, keta2_block),
                             join_horiz(keta2_block.t(), oneL22));
-  A_matrices[2] = At;
+  A_matrices[2] = &At;
 
   // 4. dV/dtauEta = K_tauEta ⊗ dAt_dtau_eta
   K_matrices[3] = join_vert(
       join_horiz(kEta1 * oneL11, sqrt(kEta1 * kEta2) * rho * oneL12),
       join_horiz(sqrt(kEta1 * kEta2) * rho * oneL12.t(), kEta2 * oneL22));
-  A_matrices[3] = dAt_dtau_eta;
+  A_matrices[3] = &dAt_dtau_eta;
 
   // 5. dV/dnuggetEta = K_nugget ⊗ dAt_dnugget
   K_matrices[4] = K_matrices[3]; // Same spatial structure as tauEta
-  A_matrices[4] = dAt_dnugget;
+  A_matrices[4] = &dAt_dnugget;
 
-  // Initialize 5x5 Fisher Information Matrix
   mat fisher_info_mx = zeros(5, 5);
 
   // Compute Fisher Information Matrix elements:
   // I_ij = trace(V^-1 * dV_i * V^-1 * dV_j) / 2
-  // Use efficient computation:
-  // I_ij = trace(kronecker_mmm(K_i, A_i, // kronecker_mmm(K_j, A_j,
-  // Vinv).t()).t() * Vinv) / 2
+  std::vector<mat> Vinv_matrices(5);
+  for (int i = 0; i < 5; i++) {
+    // Compute Vinv * (K_i ⊗ A_i)^T
+    Vinv_matrices[i] = kronecker_mmm(K_matrices[i], *A_matrices[i], Vinv);
+  }
 
   for (int i = 0; i < 5; i++) {
-    for (int j = i; j < 5; j++) { // Only compute upper triangle due to symmetry
-
-      // Step 1: Compute (K_j ⊗ A_j)^T * Vinv^T using properties of Kronecker
-      // products (K ⊗ A)^T = K^T ⊗ A^T, and Vinv^T = Vinv (symmetric)
-      mat temp1 = kronecker_mmm(K_matrices[j].t(), A_matrices[j].t(), Vinv);
-
-      // Step 2: Compute Vinv * temp1^T
-      mat temp2 = Vinv * temp1.t();
-
-      // Step 3: Compute (K_i ⊗ A_i) * temp2
-      mat temp3 = kronecker_mmm(K_matrices[i], A_matrices[i], temp2);
-
-      // Step 4: Take trace
-      fisher_info_mx(i, j) = trace(temp3) / 2.0;
-
-      // Fill symmetric entry
+    for (int j = i; j < 5; j++) {
+      fisher_info_mx(i, j) = trace(Vinv_matrices[i] * Vinv_matrices[j]) / 2.0;
       if (i != j) {
         fisher_info_mx(j, i) = fisher_info_mx(i, j);
       }

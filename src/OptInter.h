@@ -66,7 +66,8 @@ public:
 
   double Evaluate(const arma::mat &theta) override;
 
-  Rcpp::NumericMatrix ComputeFisherInformation(const arma::mat &theta);
+  Rcpp::NumericMatrix ComputeFisherInformation(const arma::mat &theta_stage1,
+                                               const arma::mat &theta_stage2);
 };
 
 #endif

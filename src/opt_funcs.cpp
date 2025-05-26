@@ -234,8 +234,9 @@ get_fisher_info(const arma::vec &theta, const arma::mat &data_r1,
   OptInter opt_inter(data_r1, data_r2, stage1_r1, stage1_r2, lambda_region1,
                      lambda_region2, cov_setting1, cov_setting2, time_sqrd_mat);
 
+  mat zeros = arma::zeros<mat>(2, 4);
   Rcpp::NumericMatrix fisher_info =
-      opt_inter.ComputeFisherInformation(theta_vec);
+      opt_inter.ComputeFisherInformation(zeros, theta_vec);
 
   return fisher_info;
 }
