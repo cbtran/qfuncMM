@@ -9,7 +9,6 @@
 #' @param overwrite Overwrite existing output file.
 #' @param verbose Print progress messages.
 #'
-#' @useDynLib qfuncMM
 #' @importFrom Rcpp sourceCpp
 #' @importFrom jsonlite toJSON read_json
 #' @export

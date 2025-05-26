@@ -65,6 +65,8 @@ public:
                               arma::mat &gradient) override;
 
   double Evaluate(const arma::mat &theta) override;
+
+  Rcpp::NumericMatrix ComputeFisherInformation(const arma::mat &theta);
 };
 
 #endif

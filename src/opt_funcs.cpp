@@ -194,3 +194,48 @@ Rcpp::List opt_inter(const arma::vec &theta_init, const arma::mat &data_r1,
                             Rcpp::Named("sigma2_ep") = sigma2_ep,
                             Rcpp::Named("objval") = cb.BestObjective());
 }
+
+//' @title Get the asymptotic variance of rho from the Fisher information matrix
+//' @noRd
+// [[Rcpp::export]]
+Rcpp::NumericMatrix
+get_fisher_info(const arma::vec &theta, const arma::mat &data_r1,
+                const arma::mat &data_r2, const arma::mat &coords_r1,
+                const arma::mat &coords_r2, const arma::mat &time_sqrd_mat,
+                const Rcpp::NumericVector &stage1_r1,
+                const Rcpp::NumericVector &stage1_r2, int cov_setting_id1,
+                int cov_setting_id2, int kernel_type_id) {
+  using arma::mat;
+  using arma::vec;
+
+  // Necessary evil since we can't easily expose enums to R
+  KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
+  CovSetting cov_setting1 = static_cast<CovSetting>(cov_setting_id1);
+  CovSetting cov_setting2 = static_cast<CovSetting>(cov_setting_id2);
+
+  mat theta_vec(theta);
+  mat sqrd_dist_region1 = squared_distance(coords_r1);
+  mat sqrd_dist_region2 = squared_distance(coords_r2);
+
+  const mat lambda_region1 = arma::kron(
+      get_cor_mat(kernel_type, sqrd_dist_region1, stage1_r1["phi_gamma"]),
+      stage1_r1["k_gamma"] * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
+                                         stage1_r1["tau_gamma"]) +
+          stage1_r1["nugget_gamma"] *
+              arma::eye(data_r1.n_rows, data_r1.n_rows));
+
+  const mat lambda_region2 = arma::kron(
+      get_cor_mat(kernel_type, sqrd_dist_region2, stage1_r2["phi_gamma"]),
+      stage1_r2["k_gamma"] * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
+                                         stage1_r2["tau_gamma"]) +
+          stage1_r2["nugget_gamma"] *
+              arma::eye(data_r2.n_rows, data_r2.n_rows));
+
+  OptInter opt_inter(data_r1, data_r2, stage1_r1, stage1_r2, lambda_region1,
+                     lambda_region2, cov_setting1, cov_setting2, time_sqrd_mat);
+
+  Rcpp::NumericMatrix fisher_info =
+      opt_inter.ComputeFisherInformation(theta_vec);
+
+  return fisher_info;
+}

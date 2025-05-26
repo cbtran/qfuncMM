@@ -176,4 +176,6 @@ qfuncMM_stage1 <- function(
     sprintf("Subject %s region %d: Finished stage 1 intra-regional. \nResults saved to ", subject_id, region_uniqid),
     normalizePath(out_file)
   )
+
+  return(outlist)
 }

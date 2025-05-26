@@ -89,6 +89,8 @@ run_stage2 <- function(
       list(rho = theta[["rho"]], rho_eblue = rho_eblue, rho_ca = rho_ca),
       as.list(theta[get("stage2_paramlist_components", qfuncMM_pkg_env)])
     )
+  ci95 <- get_asymp_ci_rho(theta, level = 0.95, region1_info = j1, region2_info = j2)
+  outlist$stage2$asympci95rho <- ci95
   outlist$loglik <- inter_result$loglik
   outlist$mu <- inter_result$betahat
 

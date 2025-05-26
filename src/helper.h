@@ -66,11 +66,4 @@ double sigmoid_inv(double y, double lower, double upper);
 // @param upper: scalar upper bound
 // @return derivative dx/dy with constraint x with bound [lower, upper]
 double sigmoid_inv_derivative(double y, double lower, double upper);
-
-// Compute asymptotic variance (inverse of Fisher information) of REML estimator
-Rcpp::List asymptotic_variance(const arma::mat &SingleRegionMatrix_1,
-                               const arma::mat &SingleRegionMatrix_2,
-                               const arma::mat &timeSqrd_mat, int L_1, int L_2,
-                               int M, double kEta, double tauEta, double nugget,
-                               double rho, const arma::mat &Z);
 #endif

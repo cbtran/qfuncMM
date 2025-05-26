@@ -221,3 +221,142 @@ double OptInter::Evaluate(const arma::mat &theta_unrestrict) {
 
   return negLL;
 }
+
+// Compute Fisher Information Matrix for Stage 2 parameters
+Rcpp::NumericMatrix OptInter::ComputeFisherInformation(const arma::mat &theta) {
+  using namespace arma;
+
+  // theta parameter list:
+  // rho, kEta1, kEta2, tauEta, nugget
+  double rho = theta(0);
+  double kEta1 = theta(1);
+  double kEta2 = theta(2);
+  double tauEta = theta(3);
+  double nuggetEta = theta(4);
+
+  // A Matrix
+  mat At = rbf(time_sqrd_, tauEta);
+  At.diag() += nuggetEta;
+
+  mat M_11 = lambda_r1_;
+  M_11 += repmat(kEta1 * At, l1_, l1_);
+  mat M_22 = lambda_r2_;
+  M_22 += repmat(kEta2 * At, l2_, l2_);
+  mat M_12 = repmat(rho * sqrt(kEta1 * kEta2) * At, l1_, l2_);
+  if (!IsNoiseless(cov_setting_r1_)) {
+    M_11.diag() += 1;
+  }
+  if (!IsNoiseless(cov_setting_r2_)) {
+    M_22.diag() += 1;
+  }
+
+  mat V = join_vert(join_horiz(M_11, M_12), join_horiz(M_12.t(), M_22));
+
+  // Cholesky decomposition with regularization if needed
+  mat VR;
+  bool success = chol(VR, V);
+  if (!success) {
+    double reg = 1e-10 * trace(V) / V.n_rows;
+    mat V_reg = V;
+    V_reg.diag() += reg;
+
+    int max_attempts = 10;
+    int attempt = 0;
+    while (!success && attempt < max_attempts) {
+      V_reg.diag() += reg;
+      success = chol(VR, V_reg);
+      reg *= 10.0;
+      attempt++;
+    }
+
+    if (!success) {
+      V_reg = V;
+      V_reg.diag() += 1e-6 * trace(V) / V.n_rows;
+      success = chol(VR, V_reg);
+    }
+  }
+  mat VRinv = inv(trimatu(VR));
+  mat Vinv = VRinv * VRinv.t();
+  // mat VinvU = arma::solve(arma::trimatu(VR), VRinv.t() * design_);
+  // mat fixed_fx_block = design_.t() * VinvU;
+
+  // Prepare derivative matrices (spatial structure only)
+  mat zeroL11 = zeros(l1_, l1_);
+  mat zeroL22 = zeros(l2_, l2_);
+  mat oneL11 = ones(l1_, l1_);
+  mat oneL22 = ones(l2_, l2_);
+  mat oneL12 = ones(l1_, l2_);
+  mat dAt_dtau_eta = rbf_deriv(time_sqrd_, tauEta);
+  mat dAt_dnugget = eye(m_, m_);
+
+  // Store the 5 spatial derivative structures
+  std::vector<mat> K_matrices(5);
+  std::vector<mat> A_matrices(5);
+
+  // 1. dV/drho = K_rho ⊗ At
+  K_matrices[0] =
+      join_vert(join_horiz(zeroL11, ones(l1_, l2_) * sqrt(kEta1 * kEta2)),
+                join_horiz(ones(l2_, l1_) * sqrt(kEta1 * kEta2), zeroL22));
+  A_matrices[0] = At;
+
+  // 2. dV/dkEta1 = K_kEta1 ⊗ At
+  mat keta1_block = ones(l1_, l2_) * (sqrt(kEta2 / kEta1) * rho * 0.5);
+  K_matrices[1] = join_vert(join_horiz(oneL11, keta1_block),
+                            join_horiz(keta1_block.t(), zeroL22));
+  A_matrices[1] = At;
+
+  // 3. dV/dkEta2 = K_kEta2 ⊗ At
+  mat keta2_block = ones(l1_, l2_) * (sqrt(kEta1 / kEta2) * rho * 0.5);
+  K_matrices[2] = join_vert(join_horiz(zeroL11, keta2_block),
+                            join_horiz(keta2_block.t(), oneL22));
+  A_matrices[2] = At;
+
+  // 4. dV/dtauEta = K_tauEta ⊗ dAt_dtau_eta
+  K_matrices[3] = join_vert(
+      join_horiz(kEta1 * oneL11, sqrt(kEta1 * kEta2) * rho * oneL12),
+      join_horiz(sqrt(kEta1 * kEta2) * rho * oneL12.t(), kEta2 * oneL22));
+  A_matrices[3] = dAt_dtau_eta;
+
+  // 5. dV/dnuggetEta = K_nugget ⊗ dAt_dnugget
+  K_matrices[4] = K_matrices[3]; // Same spatial structure as tauEta
+  A_matrices[4] = dAt_dnugget;
+
+  // Initialize 5x5 Fisher Information Matrix
+  mat fisher_info_mx = zeros(5, 5);
+
+  // Compute Fisher Information Matrix elements:
+  // I_ij = trace(V^-1 * dV_i * V^-1 * dV_j) / 2
+  // Use efficient computation:
+  // I_ij = trace(kronecker_mmm(K_i, A_i, // kronecker_mmm(K_j, A_j,
+  // Vinv).t()).t() * Vinv) / 2
+
+  for (int i = 0; i < 5; i++) {
+    for (int j = i; j < 5; j++) { // Only compute upper triangle due to symmetry
+
+      // Step 1: Compute (K_j ⊗ A_j)^T * Vinv^T using properties of Kronecker
+      // products (K ⊗ A)^T = K^T ⊗ A^T, and Vinv^T = Vinv (symmetric)
+      mat temp1 = kronecker_mmm(K_matrices[j].t(), A_matrices[j].t(), Vinv);
+
+      // Step 2: Compute Vinv * temp1^T
+      mat temp2 = Vinv * temp1.t();
+
+      // Step 3: Compute (K_i ⊗ A_i) * temp2
+      mat temp3 = kronecker_mmm(K_matrices[i], A_matrices[i], temp2);
+
+      // Step 4: Take trace
+      fisher_info_mx(i, j) = trace(temp3) / 2.0;
+
+      // Fill symmetric entry
+      if (i != j) {
+        fisher_info_mx(j, i) = fisher_info_mx(i, j);
+      }
+    }
+  }
+
+  Rcpp::CharacterVector param_names(
+      {"rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta"});
+  Rcpp::NumericMatrix r_matrix = Rcpp::wrap(fisher_info_mx);
+  r_matrix.attr("dimnames") = Rcpp::List::create(param_names, param_names);
+
+  return r_matrix;
+}

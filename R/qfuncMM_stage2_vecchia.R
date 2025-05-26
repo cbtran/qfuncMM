@@ -13,7 +13,6 @@
 #' @param verbose Print progress messages.
 #' @return A list containing the results of the inter-regional analysis.
 #'
-#' @useDynLib qfuncMM
 #' @importFrom Rcpp sourceCpp
 #' @importFrom jsonlite toJSON read_json
 #' @importFrom GpGpQFuncMM fit_qfuncmm

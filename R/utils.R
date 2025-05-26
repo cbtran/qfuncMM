@@ -12,3 +12,18 @@ stage1_nll <- function(phi, tau_gamma, k_gamma, nugget_gamma, region_mx, voxel_c
   names(grad) <- c("dPhi", "dTau_gamma", "dK_gamma", "dNugget_gamma")
   list(nll = s1$nll, grad = grad)
 }
+
+fisher_z <- function(r) {
+  atanh(r)
+}
+
+d_fisher_z <- function(r) {
+  if (r < -1 || r > 1) {
+    stop("r must be between -1 and 1")
+  }
+  return(1 / (1 - r^2))
+}
+
+inv_fisher_z <- function(z) {
+  tanh(z)
+}
