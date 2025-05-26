@@ -49,3 +49,13 @@ test_that("fisher information matrix", {
   expect_equal(colnames(fisher_info), names(theta))
   expect_equal(rownames(fisher_info), names(theta))
 })
+
+test_that("asymptotic ci from variance", {
+  theta <- 0.1
+  expect_error(get_asymp_ci_rho(theta, 0.95, asympvar_rho = 0.1), "Invalid or missing named value for 'rho'")
+  names(theta) <- "rho"
+  ci <- get_asymp_ci_rho(theta, 0.95, asympvar_rho = 0.1)
+  expect_length(ci, 2)
+  expect_named(ci, c("lower", "upper"))
+  expect_true(all(ci >= -1 & ci <= 1))
+})
