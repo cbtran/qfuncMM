@@ -1,7 +1,10 @@
 #include "OptInter.h"
+#include "armadillo"
 #include "cov_setting.h"
+#include "get_cor_mat.h"
 #include "helper.h"
 #include "rbf.h"
+#include <R/R_ext/Arith.h>
 #include <math.h>
 
 /*****************************************************************************
@@ -223,27 +226,36 @@ double OptInter::Evaluate(const arma::mat &theta_unrestrict) {
 }
 
 // Compute Fisher Information Matrix for all variance components
-Rcpp::NumericMatrix
-OptInter::ComputeFisherInformation(const arma::mat &theta_stage1,
-                                   const arma::mat &theta_stage2) {
+Rcpp::NumericMatrix OptInter::ComputeFisherInformation(
+    const arma::mat &theta_stage1, const arma::mat &theta_stage2,
+    const arma::mat &dist_sqrd1, const arma::mat &dist_sqrd2, arma::mat *C1,
+    arma::mat *B1, arma::mat *C2, arma::mat *B2) {
   using namespace arma;
 
   // stage1 parameter list:
   // phi, tau, k, nugget
   double phi_gamma1 = theta_stage1(0, 0);
   double tau_gamma1 = theta_stage1(0, 1);
-  double k_gamma1 = theta_stage1(0, 2);
+  double k_gamma1 = IsNoiseless(cov_setting_r1_)
+                        ? theta_stage1(0, 2)
+                        : (theta_stage1(0, 2) / sigma2_ep_.first);
   double nugget_gamma1 = theta_stage1(0, 3);
   double phi_gamma2 = theta_stage1(1, 0);
   double tau_gamma2 = theta_stage1(1, 1);
-  double k_gamma2 = theta_stage1(1, 2);
+  double k_gamma2 = IsNoiseless(cov_setting_r2_)
+                        ? theta_stage1(1, 2)
+                        : (theta_stage1(1, 2) / sigma2_ep_.second);
   double nugget_gamma2 = theta_stage1(1, 3);
 
   // stage2 parameter list:
   // rho, kEta1, kEta2, tauEta, nugget
   double rho = theta_stage2(0);
-  double kEta1 = theta_stage2(1);
-  double kEta2 = theta_stage2(2);
+  double kEta1 = IsNoiseless(cov_setting_r1_)
+                     ? theta_stage2(1)
+                     : (theta_stage2(1) / sigma2_ep_.first);
+  double kEta2 = IsNoiseless(cov_setting_r2_)
+                     ? theta_stage2(2)
+                     : (theta_stage2(2) / sigma2_ep_.second);
   double tauEta = theta_stage2(3);
   double nuggetEta = theta_stage2(4);
 
@@ -296,16 +308,39 @@ OptInter::ComputeFisherInformation(const arma::mat &theta_stage1,
   // Prepare derivative matrices (spatial structure only)
   mat zeroL11 = zeros(l1_, l1_);
   mat zeroL22 = zeros(l2_, l2_);
+  mat zeroL12 = zeros(l1_, l2_);
   mat oneL11 = ones(l1_, l1_);
   mat oneL22 = ones(l2_, l2_);
   mat oneL12 = ones(l1_, l2_);
   mat dAt_dtau_eta = rbf_deriv(time_sqrd_, tauEta);
   mat dAt_dnugget = eye(m_, m_);
 
+  // Derivatives wrt stage 1 parameters
+  // Gradients
+  // mat stage1_time1 = rbf(time_sqrd_, tau_gamma1);
+  // mat stage1_time2 = rbf(time_sqrd_, tau_gamma2);
+  // const mat &dB_dk_gamma1 = stage1_time1;
+  // const mat &dB_dk_gamma2 = stage1_time2;
+  // mat dB_dtau_gamma1 = k_gamma1 * rbf_deriv(time_sqrd_, tau_gamma1);
+  // mat dB_dtau_gamma2 = k_gamma2 * rbf_deriv(time_sqrd_, tau_gamma2);
+  // mat dC_dphi_gamma1 =
+  //     get_cor_mat_deriv(KernelType::Matern52, dist_sqrd1, phi_gamma1);
+  // mat dC_dphi_gamma2 =
+  //     get_cor_mat_deriv(KernelType::Matern52, dist_sqrd2, phi_gamma2);
+
+  // Stage 1 block diag derivative matrices
+  // std::vector<mat *> s1_Kmats(8);
+  // std::vector<mat *> s1_Amats(8);
+  // c("phi_gamma", "tau_gamma", "k_gamma", "nugget_gamma", "sigma2_ep")
+  // K_matrices[0] = join_vert(join_horiz(dC_dphi_gamma1, zeroL12),
+  //                           join_horiz(zeroL12.t(), zeroL22));
+  // A_matrices[0] = B1;
+
+  // K_matrices[1] = C
+
   // Store the 5 spatial derivative structures
   std::vector<mat> K_matrices(5);
   std::vector<mat *> A_matrices(5);
-
   // 1. dV/drho = K_rho ⊗ At
   K_matrices[0] =
       join_vert(join_horiz(zeroL11, oneL12 * sqrt(kEta1 * kEta2)),

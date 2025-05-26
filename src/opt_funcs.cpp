@@ -216,27 +216,28 @@ get_fisher_info(const arma::vec &theta, const arma::mat &data_r1,
   mat theta_vec(theta);
   mat sqrd_dist_region1 = squared_distance(coords_r1);
   mat sqrd_dist_region2 = squared_distance(coords_r2);
+  mat C1 = get_cor_mat(kernel_type, sqrd_dist_region1, stage1_r1["phi_gamma"]);
+  mat B1 =
+      stage1_r1["k_gamma"] *
+          get_cor_mat(KernelType::Rbf, time_sqrd_mat, stage1_r1["tau_gamma"]) +
+      stage1_r1["nugget_gamma"] * arma::eye(data_r1.n_rows, data_r1.n_rows);
 
-  const mat lambda_region1 = arma::kron(
-      get_cor_mat(kernel_type, sqrd_dist_region1, stage1_r1["phi_gamma"]),
-      stage1_r1["k_gamma"] * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
-                                         stage1_r1["tau_gamma"]) +
-          stage1_r1["nugget_gamma"] *
-              arma::eye(data_r1.n_rows, data_r1.n_rows));
+  mat C2 = get_cor_mat(kernel_type, sqrd_dist_region2, stage1_r2["phi_gamma"]);
+  mat B2 =
+      stage1_r2["k_gamma"] *
+          get_cor_mat(KernelType::Rbf, time_sqrd_mat, stage1_r2["tau_gamma"]) +
+      stage1_r2["nugget_gamma"] * arma::eye(data_r2.n_rows, data_r2.n_rows);
 
-  const mat lambda_region2 = arma::kron(
-      get_cor_mat(kernel_type, sqrd_dist_region2, stage1_r2["phi_gamma"]),
-      stage1_r2["k_gamma"] * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
-                                         stage1_r2["tau_gamma"]) +
-          stage1_r2["nugget_gamma"] *
-              arma::eye(data_r2.n_rows, data_r2.n_rows));
+  const mat lambda_region1 = arma::kron(C1, B1);
+  const mat lambda_region2 = arma::kron(C2, B2);
 
   OptInter opt_inter(data_r1, data_r2, stage1_r1, stage1_r2, lambda_region1,
                      lambda_region2, cov_setting1, cov_setting2, time_sqrd_mat);
 
   mat zeros = arma::zeros<mat>(2, 4);
   Rcpp::NumericMatrix fisher_info =
-      opt_inter.ComputeFisherInformation(zeros, theta_vec);
+      opt_inter.ComputeFisherInformation(zeros, theta_vec, sqrd_dist_region1,
+                                         sqrd_dist_region2, &C1, &B1, &C2, &B2);
 
   return fisher_info;
 }

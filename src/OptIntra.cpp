@@ -69,18 +69,18 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
   }
 
   // Gradients
-  const mat &dTemporalDvar = timeRbf;
-  mat dTemporalDscale = varTemporal * rbf_deriv(timeSqrd_, scaleTemporal);
-  mat dSpatialDscale = get_cor_mat_deriv(kernelType_, distSqrd_, scaleSpatial);
+  const mat &dB_dk_gamma = timeRbf;
+  mat dB_dtau_gamma = varTemporal * rbf_deriv(timeSqrd_, scaleTemporal);
+  mat dC_dphi_gamma = get_cor_mat_deriv(kernelType_, distSqrd_, scaleSpatial);
 
   // The calls to diagvec are delayed
   // so this does not compute the entire matrix product to just get the
   // diagonal.
-  mat temporalVarEig = temporalEigvec.t() * dTemporalDvar * temporalEigvec;
-  mat temporalScaleEig = temporalEigvec.t() * dTemporalDscale * temporalEigvec;
+  mat temporalVarEig = temporalEigvec.t() * dB_dk_gamma * temporalEigvec;
+  mat temporalScaleEig = temporalEigvec.t() * dB_dtau_gamma * temporalEigvec;
   mat temporalCovarEig = temporalEigvec.t() * covarTemporal * temporalEigvec;
   mat spatialCovarEig = spatialEigvec.t() * covarSpatial * spatialEigvec;
-  mat spatialScaleEig = spatialEigvec.t() * dSpatialDscale * spatialEigvec;
+  mat spatialScaleEig = spatialEigvec.t() * dC_dphi_gamma * spatialEigvec;
 
   mat eigvalOuterInv = arma::reshape(eigenInv, numTimePt_, numVoxel_);
   double tracedVdVarTemporal =
@@ -102,12 +102,12 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
         arma::reshape(vInvU.col(i), numTimePt_, numVoxel_) * covarSpatial.t();
   }
 
-  cube spatialDvar = dTemporalDvar * spatialColumnsVec.each_slice();
+  cube spatialDvar = dB_dk_gamma * spatialColumnsVec.each_slice();
   double trace2VarTemporal = arma::trace(
       Gt * mat(spatialDvar.memptr(), spatialDvar.n_rows * spatialDvar.n_cols,
                spatialDvar.n_slices, false));
 
-  cube spatialDscale = dTemporalDscale * spatialColumnsVec.each_slice();
+  cube spatialDscale = dB_dtau_gamma * spatialColumnsVec.each_slice();
   double trace2ScaleTemporal =
       arma::trace(Gt * mat(spatialDscale.memptr(),
                            spatialDscale.n_rows * spatialDscale.n_cols,
@@ -118,18 +118,17 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
                            spatialColumnsVec.n_rows * spatialColumnsVec.n_cols,
                            spatialColumnsVec.n_slices, false));
 
-  vInvU.each_col([&dSpatialDscale, &covarTemporal](arma::vec &uCol) {
-    uCol = kronecker_mvm(dSpatialDscale, covarTemporal, uCol);
+  vInvU.each_col([&dC_dphi_gamma, &covarTemporal](arma::vec &uCol) {
+    uCol = kronecker_mvm(dC_dphi_gamma, covarTemporal, uCol);
   });
   double trace2ScaleSpatial = arma::trace(Gt * vInvU);
 
   // Third part
   mat dataTemporalVar1 =
-      vInvCentered.t() *
-      kronecker_mvm(covarSpatial, dTemporalDvar, vInvCentered);
+      vInvCentered.t() * kronecker_mvm(covarSpatial, dB_dk_gamma, vInvCentered);
   mat dataTemporalVar2 =
       2 * vInvCentered.t() * U *
-      (-Gt * kronecker_mvm(covarSpatial, dTemporalDvar, vInvCentered));
+      (-Gt * kronecker_mvm(covarSpatial, dB_dk_gamma, vInvCentered));
   double dataTemporalVarNum = dataTemporalVar1(0, 0) + dataTemporalVar2(0, 0);
 
   mat dataTemporalVarNugget1 =
@@ -143,19 +142,19 @@ double OptIntra::EvaluateWithGradient(const arma::mat &theta,
 
   mat dataTemporalScale1 =
       vInvCentered.t() *
-      kronecker_mvm(covarSpatial, dTemporalDscale, vInvCentered);
+      kronecker_mvm(covarSpatial, dB_dtau_gamma, vInvCentered);
   mat dataTemporalScale2 =
       2 * vInvCentered.t() * U *
-      (-Gt * kronecker_mvm(covarSpatial, dTemporalDscale, vInvCentered));
+      (-Gt * kronecker_mvm(covarSpatial, dB_dtau_gamma, vInvCentered));
   double dataTemporalScaleNum =
       dataTemporalScale1(0, 0) + dataTemporalScale2(0, 0);
 
   double dataSpatialScale1 =
       as_scalar(vInvCentered.t() *
-                kronecker_mvm(dSpatialDscale, covarTemporal, vInvCentered));
+                kronecker_mvm(dC_dphi_gamma, covarTemporal, vInvCentered));
   double dataSpatialScale2 = as_scalar(
       2 * vInvCentered.t() * U *
-      (-Gt * kronecker_mvm(dSpatialDscale, covarTemporal, vInvCentered)));
+      (-Gt * kronecker_mvm(dC_dphi_gamma, covarTemporal, vInvCentered)));
   double dataSpatialScaleNum = dataSpatialScale1 + dataSpatialScale2;
 
   noiseVarianceEstimate_ = qdr / ((numVoxel_ - 1) * numTimePt_);
