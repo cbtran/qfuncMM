@@ -4,9 +4,6 @@ test_that("noisy vs noiseless fisher information matrix", {
   l1 <- 5
   l2 <- 5
 
-  d1 <- matrix(rnorm(m * l1, mean = 0, sd = 1), nrow = m, ncol = l1)
-  d2 <- matrix(rnorm(m * l2, mean = 0, sd = 1), nrow = m, ncol = l2)
-
   c1 <- matrix(rpois(3 * l1, lambda = 10), nrow = l1, ncol = 3)
   c2 <- matrix(rpois(3 * l2, lambda = 10), nrow = l2, ncol = 3)
 
@@ -38,8 +35,6 @@ test_that("noisy vs noiseless fisher information matrix", {
   # tictoc::tic("Fisher Information Matrix")
   fisher_info <- get_fisher_info(
     theta = theta,
-    data_r1 = d1,
-    data_r2 = d2,
     coords_r1 = c1,
     coords_r2 = c2,
     time_sqrd_mat = time_sqrd_mat,
@@ -66,8 +61,6 @@ test_that("noisy vs noiseless fisher information matrix", {
   # tictoc::tic("Fisher Information Matrix - Noiseless")
   fisher_info_noiseless <- get_fisher_info(
     theta = theta,
-    data_r1 = d1,
-    data_r2 = d2,
     coords_r1 = c1,
     coords_r2 = c2,
     time_sqrd_mat = time_sqrd_mat,
@@ -93,8 +86,6 @@ test_that("noisy vs noiseless fisher information matrix", {
   # tictoc::tic("Fisher Information Matrix - mixed")
   fisher_info_mixed <- get_fisher_info(
     theta = theta,
-    data_r1 = d1,
-    data_r2 = d2,
     coords_r1 = c1,
     coords_r2 = c2,
     time_sqrd_mat = time_sqrd_mat,
@@ -123,9 +114,6 @@ test_that("ReML vs ML fisher information matrix", {
   m <- 10
   l1 <- 5
   l2 <- 5
-
-  d1 <- matrix(rnorm(m * l1, mean = 0, sd = 1), nrow = m, ncol = l1)
-  d2 <- matrix(rnorm(m * l2, mean = 0, sd = 1), nrow = m, ncol = l2)
 
   c1 <- matrix(rpois(3 * l1, lambda = 10), nrow = l1, ncol = 3)
   c2 <- matrix(rpois(3 * l2, lambda = 10), nrow = l2, ncol = 3)
@@ -157,8 +145,6 @@ test_that("ReML vs ML fisher information matrix", {
 
   fisher_info_reml <- get_fisher_info(
     theta = theta,
-    data_r1 = d1,
-    data_r2 = d2,
     coords_r1 = c1,
     coords_r2 = c2,
     time_sqrd_mat = time_sqrd_mat,
@@ -172,8 +158,6 @@ test_that("ReML vs ML fisher information matrix", {
 
   fisher_info_ml <- get_fisher_info(
     theta = theta,
-    data_r1 = d1,
-    data_r2 = d2,
     coords_r1 = c1,
     coords_r2 = c2,
     time_sqrd_mat = time_sqrd_mat,
@@ -208,9 +192,6 @@ test_that("asymptotic var rho", {
   l1 <- 5
   l2 <- 5
 
-  d1 <- matrix(rnorm(m * l1, mean = 0, sd = 1), nrow = m, ncol = l1)
-  d2 <- matrix(rnorm(m * l2, mean = 0, sd = 1), nrow = m, ncol = l2)
-
   c1 <- matrix(rpois(3 * l1, lambda = 10), nrow = l1, ncol = 3)
   c2 <- matrix(rpois(3 * l2, lambda = 10), nrow = l2, ncol = 3)
 
@@ -240,7 +221,6 @@ test_that("asymptotic var rho", {
   )
 
   region1_info <- list(
-    data_std = d1,
     coords = c1,
     stage1 = stage1_r1,
     cov_setting = "noisy",
@@ -248,7 +228,6 @@ test_that("asymptotic var rho", {
   )
 
   region2_info <- list(
-    data_std = d2,
     coords = c2,
     stage1 = stage1_r2,
     cov_setting = "noisy",

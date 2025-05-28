@@ -60,8 +60,6 @@ get_asymp_var_rho <- function(theta, region1_info, region2_info, method = c("rem
 
   fisher_info_mx <- get_fisher_info(
     theta = theta, # paramlist: "rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta"
-    data_r1 = region1_info$data_std,
-    data_r2 = region2_info$data_std,
     coords_r1 = region1_info$coords,
     coords_r2 = region2_info$coords,
     time_sqrd_mat = time_sqrd_mat,
