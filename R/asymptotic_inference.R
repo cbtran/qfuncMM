@@ -52,6 +52,8 @@ get_asymp_ci_rho <- function(theta, level, asympvar_rho = NULL, region1_info = N
 #'
 #' @return A scalar value representing the asymptotic variance.
 #'
+#' @importFrom MASS ginv
+#'
 #' @export
 get_asymp_var_rho <- function(theta, region1_info, region2_info, method = c("reml", "vecchia")) {
   method <- match.arg(method)
@@ -71,7 +73,24 @@ get_asymp_var_rho <- function(theta, region1_info, region2_info, method = c("rem
     reml = method == "reml"
   )
 
-  inv_fisher_info <- solve(fisher_info_mx)
-  asympvar_rho <- inv_fisher_info["rho", "rho"]
+  rho_col_id <- which(colnames(fisher_info_mx) == "rho")
+  ei <- rep(0, nrow(fisher_info_mx))
+  ei[rho_col_id] <- 1
+
+  if (rcond(fisher_info_mx) < 1e-12) {
+    reg_param <- 1e-12 * max(diag(fisher_info_mx))
+    fisher_info_mx <- fisher_info_mx + reg_param * diag(nrow(fisher_info_mx))
+  }
+
+  asympvar_rho <- tryCatch(
+    {
+      inv_fisher_info <- solve(fisher_info_mx, ei)
+      inv_fisher_info[rho_col_id]
+    },
+    error = function(e) {
+      fisher_inv <- MASS::ginv(fisher_info_mx)
+      fisher_inv[rho_col_id, rho_col_id]
+    }
+  )
   return(asympvar_rho)
 }
