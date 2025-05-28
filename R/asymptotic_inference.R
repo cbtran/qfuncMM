@@ -48,11 +48,13 @@ get_asymp_ci_rho <- function(theta, level, asympvar_rho = NULL, region1_info = N
 #' @param theta Numeric. The estimated stage 2 parameter vector
 #' @param region1_info Stage 1 info for region 1.
 #' @param region2_info Stage 1 info for region 2.
+#' @param method Which method was used in stage 2? Either "reml" or "vecchia".
 #'
 #' @return A scalar value representing the asymptotic variance.
 #'
 #' @export
-get_asymp_var_rho <- function(theta, region1_info, region2_info) {
+get_asymp_var_rho <- function(theta, region1_info, region2_info, method = c("reml", "vecchia")) {
+  method <- match.arg(method)
   m <- region1_info$num_timepoints
   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
 
@@ -67,7 +69,8 @@ get_asymp_var_rho <- function(theta, region1_info, region2_info) {
     stage1_r2 = unlist(region2_info$stage1),
     cov_setting_id1 = cov_setting_dict(region1_info$cov_setting),
     cov_setting_id2 = cov_setting_dict(region2_info$cov_setting),
-    kernel_type_id = kernel_dict("matern_5_2")
+    kernel_type_id = kernel_dict("matern_5_2"),
+    reml = method == "reml"
   )
 
   inv_fisher_info <- solve(fisher_info_mx)

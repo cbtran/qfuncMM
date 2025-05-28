@@ -4,7 +4,6 @@
 #include "get_cor_mat.h"
 #include "helper.h"
 #include "rbf.h"
-#include <R/R_ext/Arith.h>
 #include <math.h>
 
 /*****************************************************************************
@@ -229,7 +228,7 @@ double OptInter::Evaluate(const arma::mat &theta_unrestrict) {
 Rcpp::NumericMatrix OptInter::ComputeFisherInformation(
     const arma::mat &theta_stage1, const arma::mat &theta_stage2,
     const arma::mat &dist_sqrd1, const arma::mat &dist_sqrd2, arma::mat *C1,
-    arma::mat *B1, arma::mat *C2, arma::mat *B2) {
+    arma::mat *B1, arma::mat *C2, arma::mat *B2, bool reml) {
   using namespace arma;
 
   // stage1 parameter list:
@@ -294,8 +293,14 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformation(
   }
   mat VRinv = inv(trimatu(VR));
   mat Vinv = VRinv * VRinv.t();
-  // mat VinvU = arma::solve(arma::trimatu(VR), VRinv.t() * design_);
-  // mat fixed_fx_block = design_.t() * VinvU;
+
+  if (reml) {
+    // For REML, we need to adjust the covariance matrix
+    mat VinvU = Vinv * design_;
+    mat UtVinvU = design_.t() * VinvU;
+    mat UtVinvU_inv = inv_sympd(UtVinvU);
+    Vinv -= VinvU * UtVinvU_inv * VinvU.t();
+  }
 
   // Prepare derivative matrices (spatial structure only)
   mat zeroL11 = zeros(l1_, l1_);
@@ -336,7 +341,6 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformation(
     r2_sigma2_ep_colid = num_param;
     num_param++;
   }
-  // mat oneL11 = ones(l1_, l1_);
   mat oneL11(l1_, l1_, fill::value(sigma2_ep_r1));
   mat oneL22(l2_, l2_, fill::value(sigma2_ep_r2));
   mat oneL12(l1_, l2_, fill::value(sqrt(sigma2_ep_r1 * sigma2_ep_r2)));

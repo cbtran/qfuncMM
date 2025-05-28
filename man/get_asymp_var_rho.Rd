@@ -4,7 +4,12 @@
 \alias{get_asymp_var_rho}
 \title{Get Asymptotic Variance for Rho}
 \usage{
-get_asymp_var_rho(theta, region1_info, region2_info)
+get_asymp_var_rho(
+  theta,
+  region1_info,
+  region2_info,
+  method = c("reml", "vecchia")
+)
 }
 \arguments{
 \item{theta}{Numeric. The estimated stage 2 parameter vector}
@@ -12,6 +17,8 @@ get_asymp_var_rho(theta, region1_info, region2_info)
 \item{region1_info}{Stage 1 info for region 1.}
 
 \item{region2_info}{Stage 1 info for region 2.}
+
+\item{method}{Which method was used in stage 2? Either "reml" or "vecchia".}
 }
 \value{
 A scalar value representing the asymptotic variance.
