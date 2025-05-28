@@ -31,6 +31,7 @@ test_that("fisher information matrix", {
     sigma2_ep = 0.18
   )
 
+  # tictoc::tic("Fisher Information Matrix")
   fisher_info <- get_fisher_info(
     theta = theta,
     data_r1 = d1,
@@ -44,12 +45,16 @@ test_that("fisher information matrix", {
     cov_setting_id2 = 0L,
     kernel_type_id = kernel_dict("matern_5_2")
   )
+  # tictoc::toc()
+  # print(sqrt(sum(fisher_info^2)))
+  # print(solve(fisher_info)["rho", "rho"])
 
-  expect_equal(dim(fisher_info), c(13, 13))
+  expect_equal(dim(fisher_info), c(15, 15))
   expect_names <- c(
     "phi_gamma1", "tau_gamma1", "k_gamma1", "nugget_gamma1",
     "phi_gamma2", "tau_gamma2", "k_gamma2", "nugget_gamma2",
-    names(theta)
+    names(theta),
+    "sigma2_ep1", "sigma2_ep2"
   )
   expect_equal(colnames(fisher_info), expect_names)
   expect_equal(rownames(fisher_info), expect_names)
