@@ -238,4 +238,10 @@ test_that("asymptotic var rho", {
   avar_vecchia <- get_asymp_var_rho(theta, region1_info, region2_info, "vecchia")
 
   expect_true(!isTRUE(all.equal(avar_reml, avar_vecchia)))
+
+  avar_reml_full <- get_asymp_var_rho(theta, region1_info, region2_info, "reml", approx = FALSE)
+  avar_vecchia_full <- get_asymp_var_rho(theta, region1_info, region2_info, "vecchia", approx = FALSE)
+  # expect_true(!isTRUE(all.equal(avar_reml, avar_reml_full)))
+  # expect_true(!isTRUE(all.equal(avar_vecchia, avar_vecchia_full)))
+  # expect_true(!isTRUE(all.equal(avar_reml_full, avar_vecchia_full)))
 })

@@ -487,3 +487,99 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformation(
 
   return r_matrix;
 }
+
+// Compute Fisher Information for rho only
+double OptInter::ComputeAsympVarRhoApprox(
+    const arma::mat &theta_stage2, const arma::mat &dist_sqrd1, const arma::mat &dist_sqrd2, bool reml) {
+  using namespace arma;
+
+  // stage2 parameter list:
+  // rho, kEta1, kEta2, tauEta, nugget
+  double rho = theta_stage2(0);
+  double kEta1 = theta_stage2(1);
+  double kEta2 = theta_stage2(2);
+  double tauEta = theta_stage2(3);
+  double nuggetEta = theta_stage2(4);
+
+  // A Matrix
+  mat At = rbf(time_sqrd_, tauEta);
+  At.diag() += nuggetEta;
+
+  mat M_11 = lambda_r1_;
+  M_11 += repmat(kEta1 * At, l1_, l1_);
+  mat M_22 = lambda_r2_;
+  M_22 += repmat(kEta2 * At, l2_, l2_);
+  mat M_12 = repmat(rho * sqrt(kEta1 * kEta2) * At, l1_, l2_);
+  if (!IsNoiseless(cov_setting_r1_)) {
+    M_11.diag() += 1;
+  }
+  if (!IsNoiseless(cov_setting_r2_)) {
+    M_22.diag() += 1;
+  }
+
+  mat V = join_vert(join_horiz(M_11, M_12), join_horiz(M_12.t(), M_22));
+
+  // Cholesky decomposition with regularization if needed
+  mat VR;
+  bool success = chol(VR, V);
+  if (!success) {
+    double reg = 1e-10 * trace(V) / V.n_rows;
+    mat V_reg = V;
+    V_reg.diag() += reg;
+
+    int max_attempts = 10;
+    int attempt = 0;
+    while (!success && attempt < max_attempts) {
+      V_reg.diag() += reg;
+      success = chol(VR, V_reg);
+      reg *= 10.0;
+      attempt++;
+    }
+
+    if (!success) {
+      V_reg = V;
+      V_reg.diag() += 1e-6 * trace(V) / V.n_rows;
+      success = chol(VR, V_reg);
+    }
+  }
+  mat VRinv = inv(trimatu(VR));
+  mat Vinv = VRinv * VRinv.t();
+
+  if (reml) {
+    // For REML, we need to adjust the covariance matrix
+    mat VinvU = Vinv * design_;
+    mat UtVinvU = design_.t() * VinvU;
+    mat UtVinvU_inv = inv_sympd(UtVinvU);
+    Vinv -= VinvU * UtVinvU_inv * VinvU.t();
+  }
+
+  // Prepare derivative matrices (spatial structure only)
+  mat zeroL11 = zeros(l1_, l1_);
+  mat zeroL22 = zeros(l2_, l2_);
+  mat zeroL12 = zeros(l1_, l2_);
+
+  double sigma2_ep_r1 = 1, sigma2_ep_r2 = 1;
+  if (!IsNoiseless(cov_setting_r1_)) {
+    sigma2_ep_r1 = sigma2_ep_.first;
+  }
+  if (!IsNoiseless(cov_setting_r2_)) {
+    sigma2_ep_r2 = sigma2_ep_.second;
+  }
+  mat oneL11(l1_, l1_, fill::value(sigma2_ep_r1));
+  mat oneL22(l2_, l2_, fill::value(sigma2_ep_r2));
+  mat oneL12(l1_, l2_, fill::value(sqrt(sigma2_ep_r1 * sigma2_ep_r2)));
+
+  mat dVdrho = join_vert(join_horiz(zeroL11, oneL12 * sqrt(kEta1 * kEta2)),
+                 join_horiz(oneL12.t() * sqrt(kEta1 * kEta2), zeroL22));
+
+
+  Vinv.cols(0, l1_ * m_) /= sqrt(sigma2_ep_r1);
+  Vinv.cols(l1_ * m_, Vinv.n_cols - 1) /= sqrt(sigma2_ep_r2);
+  Vinv.rows(0, l1_ * m_ - 1) /= sqrt(sigma2_ep_r1);
+  Vinv.rows(l1_ * m_, Vinv.n_rows - 1) /= sqrt(sigma2_ep_r2);
+
+  mat vinv_component_rho = kronecker_mmm(dVdrho, At, Vinv);
+
+  double fim = trace(powmat(vinv_component_rho, 2)) / 2.0;
+  return 1 / fim;
+}

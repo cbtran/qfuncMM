@@ -8,7 +8,8 @@ get_asymp_var_rho(
   theta,
   region1_info,
   region2_info,
-  method = c("reml", "vecchia")
+  method = c("reml", "vecchia"),
+  approx = TRUE
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ get_asymp_var_rho(
 \item{region2_info}{Stage 1 info for region 2.}
 
 \item{method}{Which method was used in stage 2? Either "reml" or "vecchia".}
+
+\item{approx}{Logical. If TRUE, returns an approximation to the asymptotic variance.}
 }
 \value{
 A scalar value representing the asymptotic variance.
