@@ -70,6 +70,9 @@ public:
       const arma::mat &theta_stage1, const arma::mat &theta_stage2,
       const arma::mat &dist_sqrd1, const arma::mat &dist_sqrd2, arma::mat *C1,
       arma::mat *B1, arma::mat *C2, arma::mat *B2, bool reml);
+
+  double ComputeAsympVarRhoApprox(
+      const arma::mat &theta_stage2, const arma::mat &dist_sqrd1, const arma::mat &dist_sqrd2, bool reml);
 };
 
 #endif
