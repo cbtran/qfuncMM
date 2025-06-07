@@ -29,6 +29,10 @@ get_asymp_ci_rho <- function(theta, level, asympvar_rho = NULL, region1_info = N
     }
     asympvar_rho <- get_asymp_var_rho(theta, region1_info, region2_info)
   }
+  if (asympvar_rho <= 0) {
+    message("Asymptotic variance for rho is non-positive. Returning NA for confidence interval.")
+    return(c(lower = NA, upper = NA))
+  }
   rho <- theta["rho"]
   if (is.na(rho) || rho < -1 || rho > 1) {
     stop("Invalid or missing named value for 'rho'. It must be between -1 and 1.")
