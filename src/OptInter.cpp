@@ -6,6 +6,10 @@
 #include "rbf.h"
 #include <math.h>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 /*****************************************************************************
  Inter-regional model
 *****************************************************************************/
@@ -445,30 +449,53 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformation(
     Vinv_components[i + 8] = kronecker_mmm(s2_Kmats[i], *s2_Amats[i], Vinv);
   }
 
+  // Flatten the triangular loop for better load balancing
+  int total_pairs = num_param * (num_param + 1) / 2;
+  std::vector<double> fisher_values(total_pairs, 0.0);
+  std::vector<std::pair<int, int>> index_pairs;
+  index_pairs.reserve(total_pairs);
+
+  // Pre-compute all (i,j) pairs for triangular matrix
   for (int i = 0; i < num_param; i++) {
     for (int j = i; j < num_param; j++) {
-      if (i < 4 && 4 <= j && j < 8) {
-        // Cross-terms between stage 1 params of different regions are zero
-        fisher_info_mx(i, j) = 0;
-        fisher_info_mx(j, i) = 0;
-        continue;
-      }
-      mat right;
-      if (i < 4 && j >= 8) {
-        // i < 8 are the stage 1 parameters, so only the upper-left or
-        // lower-right blocks are nonzero. Extract the relevant submatrices for
-        // stage 2 parameters based on this.
-        right = Vinv_components[j].submat(0, 0, l1_ * m_ - 1, l1_ * m_ - 1);
-      } else if (i < 8 && j >= 8) {
-        right = Vinv_components[j].submat(l1_ * m_, l1_ * m_, Vinv.n_rows - 1,
-                                          Vinv.n_cols - 1);
-      } else {
-        right = Vinv_components[j];
-      }
-      fisher_info_mx(i, j) = trace(Vinv_components[i] * right) / 2.0;
-      if (i != j) {
-        fisher_info_mx(j, i) = fisher_info_mx(i, j);
-      }
+      index_pairs.push_back({i, j});
+    }
+  }
+
+#pragma omp parallel for schedule(dynamic, 1)
+  for (int idx = 0; idx < total_pairs; idx++) {
+    int i = index_pairs[idx].first;
+    int j = index_pairs[idx].second;
+
+    // Skip zero cross-terms between different Stage 1 regions
+    if (i < 4 && 4 <= j && j < 8) {
+      fisher_values[idx] = 0.0;
+      continue;
+    }
+
+    mat right;
+    if (i < 4 && j >= 8) {
+      right = Vinv_components[j].submat(0, 0, l1_ * m_ - 1, l1_ * m_ - 1);
+    } else if (i < 8 && j >= 8) {
+      right = Vinv_components[j].submat(l1_ * m_, l1_ * m_, Vinv.n_rows - 1,
+                                        Vinv.n_cols - 1);
+    } else {
+      right = Vinv_components[j];
+    }
+
+    // Compute Fisher element
+    fisher_values[idx] = trace(Vinv_components[i] * right) / 2.0;
+  }
+
+  // Single-threaded assembly of results (no critical sections needed)
+  for (int idx = 0; idx < total_pairs; idx++) {
+    int i = index_pairs[idx].first;
+    int j = index_pairs[idx].second;
+    fisher_info_mx(i, j) = fisher_values[idx];
+
+    // Fill symmetric part
+    if (i != j) {
+      fisher_info_mx(j, i) = fisher_values[idx];
     }
   }
 
@@ -489,8 +516,10 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformation(
 }
 
 // Compute Fisher Information for rho only
-double OptInter::ComputeAsympVarRhoApprox(
-    const arma::mat &theta_stage2, const arma::mat &dist_sqrd1, const arma::mat &dist_sqrd2, bool reml) {
+double OptInter::ComputeAsympVarRhoApprox(const arma::mat &theta_stage2,
+                                          const arma::mat &dist_sqrd1,
+                                          const arma::mat &dist_sqrd2,
+                                          bool reml) {
   using namespace arma;
 
   // stage2 parameter list:
@@ -570,8 +599,7 @@ double OptInter::ComputeAsympVarRhoApprox(
   mat oneL12(l1_, l2_, fill::value(sqrt(sigma2_ep_r1 * sigma2_ep_r2)));
 
   mat dVdrho = join_vert(join_horiz(zeroL11, oneL12 * sqrt(kEta1 * kEta2)),
-                 join_horiz(oneL12.t() * sqrt(kEta1 * kEta2), zeroL22));
-
+                         join_horiz(oneL12.t() * sqrt(kEta1 * kEta2), zeroL22));
 
   Vinv.cols(0, l1_ * m_) /= sqrt(sigma2_ep_r1);
   Vinv.cols(l1_ * m_, Vinv.n_cols - 1) /= sqrt(sigma2_ep_r2);
