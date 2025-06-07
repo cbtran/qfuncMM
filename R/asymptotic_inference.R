@@ -57,7 +57,7 @@ get_asymp_ci_rho <- function(theta, level, asympvar_rho = NULL, region1_info = N
 #'
 #' @export
 get_asymp_var_rho <- function(
-    theta, region1_info, region2_info, method = c("reml", "vecchia"), approx = TRUE) {
+    theta, region1_info, region2_info, method = c("reml", "vecchia"), approx = FALSE) {
   method <- match.arg(method)
   m <- region1_info$num_timepoints
   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
