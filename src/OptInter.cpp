@@ -548,31 +548,19 @@ double OptInter::ComputeAsympVarRhoApprox(const arma::mat &theta_stage2,
 
   mat V = join_vert(join_horiz(M_11, M_12), join_horiz(M_12.t(), M_22));
 
-  // Cholesky decomposition with regularization if needed
-  mat VR;
-  bool success = chol(VR, V);
-  if (!success) {
-    double reg = 1e-10 * trace(V) / V.n_rows;
-    mat V_reg = V;
-    V_reg.diag() += reg;
-
-    int max_attempts = 10;
-    int attempt = 0;
-    while (!success && attempt < max_attempts) {
-      V_reg.diag() += reg;
-      success = chol(VR, V_reg);
-      reg *= 10.0;
-      attempt++;
-    }
-
+  mat Vinv;
+  int max_attempts = 10;
+  int attempt = 0;
+  double reg = 1e-10 * trace(V) / V.n_rows;
+  bool success = false;
+  while (!success && attempt < max_attempts) {
+    success = inv_sympd(Vinv, V);
     if (!success) {
-      V_reg = V;
-      V_reg.diag() += 1e-6 * trace(V) / V.n_rows;
-      success = chol(VR, V_reg);
+      V.diag() += reg;
+      attempt++;
+      reg *= 10.0;
     }
   }
-  mat VRinv = inv(trimatu(VR));
-  mat Vinv = VRinv * VRinv.t();
 
   if (reml) {
     // For REML, we need to adjust the covariance matrix
@@ -585,7 +573,6 @@ double OptInter::ComputeAsympVarRhoApprox(const arma::mat &theta_stage2,
   // Prepare derivative matrices (spatial structure only)
   mat zeroL11 = zeros(l1_, l1_);
   mat zeroL22 = zeros(l2_, l2_);
-  mat zeroL12 = zeros(l1_, l2_);
 
   double sigma2_ep_r1 = 1, sigma2_ep_r2 = 1;
   if (!IsNoiseless(cov_setting_r1_)) {
@@ -594,8 +581,6 @@ double OptInter::ComputeAsympVarRhoApprox(const arma::mat &theta_stage2,
   if (!IsNoiseless(cov_setting_r2_)) {
     sigma2_ep_r2 = sigma2_ep_.second;
   }
-  mat oneL11(l1_, l1_, fill::value(sigma2_ep_r1));
-  mat oneL22(l2_, l2_, fill::value(sigma2_ep_r2));
   mat oneL12(l1_, l2_, fill::value(sqrt(sigma2_ep_r1 * sigma2_ep_r2)));
 
   mat dVdrho = join_vert(join_horiz(zeroL11, oneL12 * sqrt(kEta1 * kEta2)),
@@ -607,7 +592,6 @@ double OptInter::ComputeAsympVarRhoApprox(const arma::mat &theta_stage2,
   Vinv.rows(l1_ * m_, Vinv.n_rows - 1) /= sqrt(sigma2_ep_r2);
 
   mat vinv_component_rho = kronecker_mmm(dVdrho, At, Vinv);
-
-  double fim = trace(powmat(vinv_component_rho, 2)) / 2.0;
+  double fim = accu(vinv_component_rho % vinv_component_rho.t()) / 2;
   return 1 / fim;
 }
