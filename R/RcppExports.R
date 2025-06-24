@@ -65,7 +65,7 @@ get_fisher_info <- function(theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r
     .Call('_qfuncMM_get_fisher_info', PACKAGE = 'qfuncMM', theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, reml)
 }
 
-get_asymp_var_rho_approx_cpp <- function(theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, reml) {
-    .Call('_qfuncMM_get_asymp_var_rho_approx_cpp', PACKAGE = 'qfuncMM', theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, reml)
+get_asymp_var_rho_approx_cpp <- function(theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, reml, new_imp = FALSE) {
+    .Call('_qfuncMM_get_asymp_var_rho_approx_cpp', PACKAGE = 'qfuncMM', theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, reml, new_imp)
 }
 

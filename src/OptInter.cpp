@@ -595,3 +595,65 @@ double OptInter::ComputeAsympVarRhoApprox(const arma::mat &theta_stage2,
   double fim = accu(vinv_component_rho % vinv_component_rho.t()) / 2;
   return 1 / fim;
 }
+
+double OptInter::ComputeAsympVarRhoApproxVecchia(const arma::mat &theta_stage2,
+                                                 const arma::mat &dist_sqrd1,
+                                                 const arma::mat &dist_sqrd2) {
+  using namespace arma;
+
+  // stage2 parameter list:
+  // rho, kEta1, kEta2, tauEta, nugget
+  double rho = theta_stage2(0);
+  double kEta1 = theta_stage2(1);
+  double kEta2 = theta_stage2(2);
+  double tauEta = theta_stage2(3);
+  double nuggetEta = theta_stage2(4);
+
+  // A Matrix
+  mat At = rbf(time_sqrd_, tauEta);
+  At.diag() += nuggetEta;
+
+  mat v11 = lambda_r1_;
+  v11 += repmat(kEta1 * At, l1_, l1_);
+  mat v22 = lambda_r2_;
+  v22 += repmat(kEta2 * At, l2_, l2_);
+  mat v12 = repmat(rho * sqrt(kEta1 * kEta2) * At, l1_, l2_);
+  if (!IsNoiseless(cov_setting_r1_)) {
+    v11.diag() += 1;
+  }
+  if (!IsNoiseless(cov_setting_r2_)) {
+    v22.diag() += 1;
+  }
+
+  double sigma2_ep_r1 = 1, sigma2_ep_r2 = 1;
+  if (!IsNoiseless(cov_setting_r1_)) {
+    sigma2_ep_r1 = sigma2_ep_.first;
+  }
+  if (!IsNoiseless(cov_setting_r2_)) {
+    sigma2_ep_r2 = sigma2_ep_.second;
+  }
+
+  v11 *= sigma2_ep_r1;
+  v22 *= sigma2_ep_r2;
+  v12 *= sqrt(sigma2_ep_r1 * sigma2_ep_r2);
+
+  // Compute the Schur components
+  mat v11inv = inv_sympd(v11);
+  mat schur = v22 - v12.t() * v11inv * v12;
+  mat schur_inv = inv_sympd(schur);
+
+  mat drho12(l1_, l2_,
+             fill::value(sqrt(sigma2_ep_r1 * sigma2_ep_r2 * kEta1 * kEta2)));
+
+  // Solve V[x, y] = [0, drho12_A]
+  mat y1 = (kronecker_mmm(drho12, At, schur_inv)).t();
+  mat v11invV12 = v11inv * v12;
+  mat x1 = -v11invV12 * y1;
+
+  mat kron12t = (kronecker_mmm(drho12.t(), At, v11inv)).t();
+  mat y2 = -schur_inv * v12.t() * kron12t;
+  mat x2 = kron12t - v11invV12 * y2;
+
+  double fim = accu(x1 % x1.t()) + 2 * accu(y1 % x2.t()) + accu(y2 % y2.t());
+  return 2 / fim;
+}

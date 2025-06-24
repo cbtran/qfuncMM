@@ -19,7 +19,7 @@ arma::vec kronecker_mvm(const arma::mat &A, const arma::mat &B,
 // by applying the vec-trick to each column of C.
 arma::mat kronecker_mmm(const arma::mat &A, const arma::mat &B,
                         const arma::mat &C, bool eye_B) {
-  arma::mat V(C.n_rows, C.n_cols);
+  arma::mat V(A.n_rows * B.n_rows, C.n_cols);
   int n_cols = C.n_cols;
   for (int i = 0; i < n_cols; i++) {
     V.col(i) = kronecker_mvm(A, B, C.col(i), eye_B);
