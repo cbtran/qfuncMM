@@ -9,7 +9,8 @@ get_asymp_var_rho(
   region1_info,
   region2_info,
   method = c("reml", "vecchia"),
-  approx = FALSE
+  approx = FALSE,
+  fast = FALSE
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ get_asymp_var_rho(
 \item{method}{Which method was used in stage 2? Either "reml" or "vecchia".}
 
 \item{approx}{Logical. If TRUE, returns an approximation to the asymptotic variance.}
+
+\item{fast}{Logical. If TRUE, uses a faster approximation method.}
 }
 \value{
 A scalar value representing the asymptotic variance.

@@ -306,52 +306,69 @@ test_that("asymptotic var rho", {
 #   expect_equal(rownames(fisher_info), expect_names)
 # })
 
-test_that("large asymp var approx test", {
-  # RhpcBLASctl::blas_set_num_threads(1)
-  # RhpcBLASctl::omp_set_num_threads(10)
+# test_that("large asymp var approx test", {
+# rhpcblasctl::blas_set_num_threads(1)
+# rhpcblasctl::omp_set_num_threads(10)
 
-  c1 <- qfunc_sim_data$coords[[1]]
-  c2 <- qfunc_sim_data$coords[[2]]
+# c1 <- qfunc_sim_data$coords[[1]]
+# c2 <- qfunc_sim_data$coords[[3]]
 
-  theta <- c(
-    rho = 0.1,
-    k_eta1 = 2.7,
-    k_eta2 = 2.9,
-    tau_eta = 0.3,
-    nugget_eta = 0.1
-  )
+# theta <- c(
+#   rho = 0.1,
+#   k_eta1 = 2.7,
+#   k_eta2 = 2.9,
+#   tau_eta = 0.3,
+#   nugget_eta = 0.1
+# )
 
-  m <- 60
-  time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
-  stage1_r1 <- c(
-    phi_gamma = 0.76,
-    tau_gamma = 0.52,
-    k_gamma = 2.05,
-    nugget_gamma = 0.14,
-    sigma2_ep = 0.16
-  )
+# m <- 60
+# time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
+# stage1_r1 <- c(
+#   phi_gamma = 0.76,
+#   tau_gamma = 0.52,
+#   k_gamma = 2.05,
+#   nugget_gamma = 0.14,
+#   sigma2_ep = 0.16
+# )
 
-  stage1_r2 <- c(
-    phi_gamma = 1.25,
-    tau_gamma = 0.48,
-    k_gamma = 2.09,
-    nugget_gamma = 0.36,
-    sigma2_ep = 0.18
-  )
+# stage1_r2 <- c(
+#   phi_gamma = 1.25,
+#   tau_gamma = 0.48,
+#   k_gamma = 2.09,
+#   nugget_gamma = 0.36,
+#   sigma2_ep = 0.18
+# )
 
-  # tictoc::tic("rho approx")
-  avar_rho <- get_asymp_var_rho_approx_cpp(
-    theta = theta,
-    coords_r1 = c1,
-    coords_r2 = c2,
-    time_sqrd_mat = time_sqrd_mat,
-    stage1_r1 = stage1_r1,
-    stage1_r2 = stage1_r2,
-    cov_setting_id1 = 0L,
-    cov_setting_id2 = 0L,
-    kernel_type_id = kernel_dict("matern_5_2"),
-    reml = FALSE
-  )
-  # tictoc::toc()
-  # cat("avar:", avar_rho, "\n")
-})
+# tictoc::tic("rho approx")
+# avar_rho <- get_asymp_var_rho_approx_cpp(
+#   theta = theta,
+#   coords_r1 = c1,
+#   coords_r2 = c2,
+#   time_sqrd_mat = time_sqrd_mat,
+#   stage1_r1 = stage1_r1,
+#   stage1_r2 = stage1_r2,
+#   cov_setting_id1 = 0l,
+#   cov_setting_id2 = 0l,
+#   kernel_type_id = kernel_dict("matern_5_2"),
+#   reml = false
+# )
+# tictoc::toc()
+# cat("avar:", avar_rho, "\n")
+
+# tictoc::tic("rho approx_new")
+# avar_rho_new <- get_asymp_var_rho_approx_cpp(
+#   theta = theta,
+#   coords_r1 = c1,
+#   coords_r2 = c2,
+#   time_sqrd_mat = time_sqrd_mat,
+#   stage1_r1 = stage1_r1,
+#   stage1_r2 = stage1_r2,
+#   cov_setting_id1 = 0l,
+#   cov_setting_id2 = 0l,
+#   kernel_type_id = kernel_dict("matern_5_2"),
+#   reml = false,
+#   new_imp = true
+# )
+# tictoc::toc()
+# cat("avar_new:", avar_rho_new, "\n")
+# })

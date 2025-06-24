@@ -249,13 +249,13 @@ get_fisher_info(const arma::vec &theta, const arma::mat &coords_r1,
   return fisher_info;
 }
 
-
 // [[Rcpp::export]]
-double get_asymp_var_rho_approx_cpp(const arma::vec &theta, const arma::mat &coords_r1,
-                                const arma::mat &coords_r2, const arma::mat &time_sqrd_mat,
-                                const Rcpp::NumericVector &stage1_r1,
-                                const Rcpp::NumericVector &stage1_r2, int cov_setting_id1,
-                                int cov_setting_id2, int kernel_type_id, bool reml) {
+double get_asymp_var_rho_approx_cpp(
+    const arma::vec &theta, const arma::mat &coords_r1,
+    const arma::mat &coords_r2, const arma::mat &time_sqrd_mat,
+    const Rcpp::NumericVector &stage1_r1, const Rcpp::NumericVector &stage1_r2,
+    int cov_setting_id1, int cov_setting_id2, int kernel_type_id, bool reml,
+    bool new_imp = false) {
   using arma::mat;
   using arma::vec;
   int m = time_sqrd_mat.n_rows;
@@ -289,7 +289,13 @@ double get_asymp_var_rho_approx_cpp(const arma::vec &theta, const arma::mat &coo
                      lambda_region1, lambda_region2, cov_setting1, cov_setting2,
                      time_sqrd_mat);
 
-  double result = opt_inter.ComputeAsympVarRhoApprox(theta_vec, sqrd_dist_region1, sqrd_dist_region2, reml);
+  double result = 0;
+  if (new_imp)
+    result = opt_inter.ComputeAsympVarRhoApproxVecchia(
+        theta_vec, sqrd_dist_region1, sqrd_dist_region2);
+  else
+    result = opt_inter.ComputeAsympVarRhoApprox(theta_vec, sqrd_dist_region1,
+                                                sqrd_dist_region2, reml);
 
   return result;
 }
