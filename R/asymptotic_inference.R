@@ -68,19 +68,42 @@ get_asymp_var_rho <- function(
   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
 
   if (approx) {
-    asympvar_rho <- get_asymp_var_rho_approx_cpp(
-      theta = theta, # paramlist: "rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta"
-      coords_r1 = region1_info$coords,
-      coords_r2 = region2_info$coords,
-      time_sqrd_mat = time_sqrd_mat,
-      stage1_r1 = unlist(region1_info$stage1),
-      stage1_r2 = unlist(region2_info$stage1),
-      cov_setting_id1 = cov_setting_dict(region1_info$cov_setting),
-      cov_setting_id2 = cov_setting_dict(region2_info$cov_setting),
-      kernel_type_id = kernel_dict("matern_5_2"),
-      reml = method == "reml",
-      new_imp = fast
-    )
+    # It is faster to have the smaller region as region 2
+    r1nvox <- nrow(region1_info$coords)
+    r2nvox <- nrow(region2_info$coords)
+    asympvar_rho <- NA
+    if (r1nvox >= r2nvox) {
+      asympvar_rho <- get_asymp_var_rho_approx_cpp(
+        theta = theta, # paramlist: "rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta"
+        coords_r1 = region1_info$coords,
+        coords_r2 = region2_info$coords,
+        time_sqrd_mat = time_sqrd_mat,
+        stage1_r1 = unlist(region1_info$stage1),
+        stage1_r2 = unlist(region2_info$stage1),
+        cov_setting_id1 = cov_setting_dict(region1_info$cov_setting),
+        cov_setting_id2 = cov_setting_dict(region2_info$cov_setting),
+        kernel_type_id = kernel_dict("matern_5_2"),
+        reml = method == "reml",
+        new_imp = fast
+      )
+    } else {
+      temp <- theta["k_eta1"]
+      theta["k_eta1"] <- theta["k_eta2"]
+      theta["k_eta2"] <- temp
+      asympvar_rho <- get_asymp_var_rho_approx_cpp(
+        theta = theta, # paramlist: "rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta"
+        coords_r1 = region2_info$coords,
+        coords_r2 = region1_info$coords,
+        time_sqrd_mat = time_sqrd_mat,
+        stage1_r1 = unlist(region2_info$stage1),
+        stage1_r2 = unlist(region1_info$stage1),
+        cov_setting_id1 = cov_setting_dict(region2_info$cov_setting),
+        cov_setting_id2 = cov_setting_dict(region1_info$cov_setting),
+        kernel_type_id = kernel_dict("matern_5_2"),
+        reml = method == "reml",
+        new_imp = fast
+      )
+    }
     return(asympvar_rho)
   }
 

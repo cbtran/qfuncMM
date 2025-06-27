@@ -380,10 +380,9 @@ test_that("asymptotic var rho", {
 #   file1 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_249.json"
 #   file2 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_254.json"
 #   d1 <- jsonlite::read_json(file1, simplifyVector = TRUE)
+#   d1$stage1$sigma2_ep <- NA
 #   d2 <- jsonlite::read_json(file2, simplifyVector = TRUE)
-
-#   c1 <- d1$coords
-#   c2 <- d2$coords
+#   d2$stage1$sigma2_ep <- NA
 
 #   theta <- c(
 #     rho = 0.1,
@@ -393,53 +392,26 @@ test_that("asymptotic var rho", {
 #     nugget_eta = 0.1
 #   )
 
-#   m <- d1$num_timepoints
-#   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
-#   stage1_r1 <- c(
-#     phi_gamma = 0.76,
-#     tau_gamma = 0.52,
-#     k_gamma = 2.05,
-#     nugget_gamma = 0.14,
-#     sigma2_ep = 0.16
-#   )
-
-#   stage1_r2 <- c(
-#     phi_gamma = 1.25,
-#     tau_gamma = 0.48,
-#     k_gamma = 2.09,
-#     nugget_gamma = 0.36,
-#     sigma2_ep = 0.18
-#   )
-
 #   tictoc::tic("rho approx")
-#   avar_rho <- get_asymp_var_rho_approx_cpp(
+#   avar_rho <- get_asymp_var_rho(
 #     theta = theta,
-#     coords_r1 = c1,
-#     coords_r2 = c2,
-#     time_sqrd_mat = time_sqrd_mat,
-#     stage1_r1 = stage1_r1,
-#     stage1_r2 = stage1_r2,
-#     cov_setting_id1 = 0L,
-#     cov_setting_id2 = 0L,
-#     kernel_type_id = kernel_dict("matern_5_2"),
-#     reml = FALSE
+#     region1_info = d1,
+#     region2_info = d2,
+#     method = "vecchia",
+#     approx = TRUE,
+#     fast = FALSE
 #   )
 #   tictoc::toc()
 #   cat("avar:", avar_rho, "\n")
 
 #   tictoc::tic("rho approx_new")
-#   avar_rho_new <- get_asymp_var_rho_approx_cpp(
+#   avar_rho_new <- get_asymp_var_rho(
 #     theta = theta,
-#     coords_r1 = c1,
-#     coords_r2 = c2,
-#     time_sqrd_mat = time_sqrd_mat,
-#     stage1_r1 = stage1_r1,
-#     stage1_r2 = stage1_r2,
-#     cov_setting_id1 = 0L,
-#     cov_setting_id2 = 0L,
-#     kernel_type_id = kernel_dict("matern_5_2"),
-#     reml = FALSE,
-#     new_imp = TRUE
+#     region1_info = d1,
+#     region2_info = d2,
+#     method = "vecchia",
+#     approx = TRUE,
+#     fast = TRUE
 #   )
 #   tictoc::toc()
 #   cat("avar_new:", avar_rho_new, "\n")
