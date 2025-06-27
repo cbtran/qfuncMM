@@ -609,7 +609,7 @@ double OptInter::ComputeAsympVarRhoApproxVecchia(const arma::mat &theta_stage2,
   double tauEta = theta_stage2(3);
   double nuggetEta = theta_stage2(4);
 
-  Rcpp::Rcout << "setup" << std::endl;
+  // Rcpp::Rcout << "setup" << std::endl;
   // A Matrix
   mat At = rbf(time_sqrd_, tauEta);
   At.diag() += nuggetEta;
@@ -640,29 +640,29 @@ double OptInter::ComputeAsympVarRhoApproxVecchia(const arma::mat &theta_stage2,
   v22 *= sigma2_ep_r2;
 
   // Compute the Schur components
-  Rcpp::Rcout << "v11inv" << std::endl;
+  // Rcpp::Rcout << "v11inv" << std::endl;
   mat v11inv = inv_sympd(v11);
-  Rcpp::Rcout << "v11invV12" << std::endl;
+  // Rcpp::Rcout << "v11invV12" << std::endl;
   mat v11invV12 = (kronecker_mmm(rho * eta21, At, v11inv)).t();
-  Rcpp::Rcout << "schur" << std::endl;
+  // Rcpp::Rcout << "schur" << std::endl;
   mat v12_At_v11inv_v12 = kronecker_mmm(eta21, At, v11invV12);
   mat schur = v22 - rho * v12_At_v11inv_v12;
 
   v11.reset();
   v22.reset();
 
-  Rcpp::Rcout << "schur inv" << std::endl;
+  // Rcpp::Rcout << "schur inv" << std::endl;
   mat schur_inv = inv_sympd(schur);
   schur.reset(); // Free memory
 
-  Rcpp::Rcout << "solves 1" << std::endl;
+  // Rcpp::Rcout << "solves 1" << std::endl;
   double fim = 0;
   mat y1 = (kronecker_mmm(eta21.t(), At, schur_inv)).t();
   mat x1 = -v11invV12 * y1;
   fim += accu(x1 % x1.t());
   x1.reset();
 
-  Rcpp::Rcout << "solves 2" << std::endl;
+  // Rcpp::Rcout << "solves 2" << std::endl;
   mat y2 = schur_inv * v12_At_v11inv_v12;
   fim += accu(y2 % y2.t());
   y2.diag() += 1 / rho;
