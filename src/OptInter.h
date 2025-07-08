@@ -78,6 +78,10 @@ public:
   double ComputeAsympVarRhoApproxVecchia(const arma::mat &theta_stage2,
                                          const arma::mat &dist_sqrd1,
                                          const arma::mat &dist_sqrd2);
+
+  double ComputeAsympVarRhoApproxVecchiaBanded(const arma::mat &theta_stage2,
+                                               const arma::mat &dist_sqrd1,
+                                               const arma::mat &dist_sqrd2);
 };
 
 #endif

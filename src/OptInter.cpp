@@ -4,6 +4,7 @@
 #include "get_cor_mat.h"
 #include "helper.h"
 #include "rbf.h"
+#include <chrono>
 #include <math.h>
 
 #ifdef _OPENMP
@@ -599,6 +600,128 @@ double OptInter::ComputeAsympVarRhoApprox(const arma::mat &theta_stage2,
 double OptInter::ComputeAsympVarRhoApproxVecchia(const arma::mat &theta_stage2,
                                                  const arma::mat &dist_sqrd1,
                                                  const arma::mat &dist_sqrd2) {
+  using namespace arma;
+
+  // stage2 parameter list:
+  // rho, kEta1, kEta2, tauEta, nugget
+  double rho = theta_stage2(0);
+  double kEta1 = theta_stage2(1);
+  double kEta2 = theta_stage2(2);
+  double tauEta = theta_stage2(3);
+  double nuggetEta = theta_stage2(4);
+
+  Rcpp::Rcout << "Setup... ";
+  auto start_time = std::chrono::high_resolution_clock::now();
+  // A Matrix
+  mat At = rbf(time_sqrd_, tauEta);
+  At.diag() += nuggetEta;
+
+  mat v11 = lambda_r1_;
+  v11 += repmat(kEta1 * At, l1_, l1_);
+  mat v22 = lambda_r2_;
+  v22 += repmat(kEta2 * At, l2_, l2_);
+  // mat v12 = repmat(rho * sqrt(kEta1 * kEta2) * At, l1_, l2_);
+  if (!IsNoiseless(cov_setting_r1_)) {
+    v11.diag() += 1;
+  }
+  if (!IsNoiseless(cov_setting_r2_)) {
+    v22.diag() += 1;
+  }
+
+  double sigma2_ep_r1 = 1, sigma2_ep_r2 = 1;
+  if (!IsNoiseless(cov_setting_r1_)) {
+    sigma2_ep_r1 = sigma2_ep_.first;
+  }
+  if (!IsNoiseless(cov_setting_r2_)) {
+    sigma2_ep_r2 = sigma2_ep_.second;
+  }
+  // mat eta21 = mat(
+  //     l2_, l1_, fill::value(sqrt(kEta1 * kEta2 * sigma2_ep_r1 *
+  //     sigma2_ep_r2)));
+  double sqrt_var = sqrt(kEta1 * kEta2 * sigma2_ep_r1 * sigma2_ep_r2);
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+      end_time - start_time);
+  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
+
+  // Compute the Schur components
+  Rcpp::Rcout << "v11inv... ";
+  start_time = std::chrono::high_resolution_clock::now();
+  mat v11inv = inv_sympd(v11) / sigma2_ep_r1;
+  end_time = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+                                                                   start_time);
+  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
+  v11.reset(); // Free memory since matrix no longer needed
+
+  Rcpp::Rcout << "v11invV12... ";
+  start_time = std::chrono::high_resolution_clock::now();
+  // mat v11invV12 = (kronecker_mmm(rho * eta21, At, v11inv)).t();
+  mat v11invV12 =
+      (kronecker_omm(At, v11inv, l2_, rho * sqrt_var))
+          .t();
+  v11inv.reset();
+  end_time = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+                                                                   start_time);
+  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
+
+  Rcpp::Rcout << "schur... ";
+  start_time = std::chrono::high_resolution_clock::now();
+  // mat v12_At_v11inv_v12 = kronecker_mmm(eta21, At, v11invV12);
+  mat v12_At_v11inv_v12 = kronecker_omm(At, v11invV12, l2_, sqrt_var);
+  mat schur = v22 * sigma2_ep_r2 - rho * v12_At_v11inv_v12;
+  v22.reset();
+  end_time = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+                                                                   start_time);
+  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
+
+  Rcpp::Rcout << "schur inv... ";
+  start_time = std::chrono::high_resolution_clock::now();
+  mat schur_inv = inv_sympd(schur);
+  schur.reset();
+  mat y2 = schur_inv * v12_At_v11inv_v12;
+  v12_At_v11inv_v12.reset();
+  end_time = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+                                                                   start_time);
+  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
+
+  Rcpp::Rcout << "solves 1... ";
+  start_time = std::chrono::high_resolution_clock::now();
+  double fim = 0;
+  // mat y1 = (kronecker_mmm(eta21.t(), At, schur_inv)).t();
+  mat y1 = (kronecker_omm(At, schur_inv, l1_, sqrt_var)).t();
+  // eta21.reset();
+  At.reset();
+  schur_inv.reset();
+  mat x1 = -v11invV12 * y1;
+  fim += accu(x1 % x1.t());
+  x1.reset();
+  end_time = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+                                                                   start_time);
+  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
+
+  Rcpp::Rcout << "solves 2... ";
+  start_time = std::chrono::high_resolution_clock::now();
+  fim += accu(y2 % y2.t());
+  y2.diag() += 1 / rho;
+  mat x2 = v11invV12 * y2;
+  fim += 2 * accu(y1 % x2.t());
+  end_time = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+                                                                   start_time);
+  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
+
+  return 2 / fim;
+}
+
+double
+OptInter::ComputeAsympVarRhoApproxVecchiaBanded(const arma::mat &theta_stage2,
+                                                const arma::mat &dist_sqrd1,
+                                                const arma::mat &dist_sqrd2) {
   using namespace arma;
 
   // stage2 parameter list:

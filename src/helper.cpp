@@ -28,6 +28,26 @@ arma::mat kronecker_mmm(const arma::mat &A, const arma::mat &B,
   return V;
 }
 
+arma::vec kronecker_ovm(const arma::mat &B, const arma::vec &v,
+                        arma::uword n_row_A, double scalar) {
+  arma::uword n_col = v.n_elem / B.n_cols;
+  arma::mat V_mat = arma::reshape(v, B.n_cols, n_col);
+  arma::vec row_sums = sum(V_mat, 1) * scalar;
+  arma::mat b_vec = B * row_sums;
+  arma::vec result = arma::repmat(b_vec, n_row_A, 1);
+  return result;
+}
+
+arma::mat kronecker_omm(const arma::mat &B, const arma::mat &C,
+                        arma::uword n_row, double scalar) {
+  arma::uword n_cols = C.n_cols;
+  arma::mat V(n_row * B.n_rows, n_cols);
+  for (arma::uword i = 0; i < n_cols; i++) {
+    V.col(i) = kronecker_ovm(B, C.col(i), n_row, scalar);
+  }
+  return V;
+}
+
 arma::mat squared_distance(arma::mat coords) {
   int n = coords.n_rows;
   arma::mat result(n, n, arma::fill::zeros);

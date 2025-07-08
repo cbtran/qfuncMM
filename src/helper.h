@@ -17,6 +17,14 @@ arma::vec kronecker_mvm(const arma::mat &A, const arma::mat &B,
 arma::mat kronecker_mmm(const arma::mat &A, const arma::mat &B,
                         const arma::mat &C, bool eye_B = false);
 
+arma::vec kronecker_ovm(const arma::mat &B, const arma::vec &v,
+                        arma::uword n_row_A, double scalar = 1);
+
+// Kronecker matrix product (A \otimes B) * C where A is a matrix of ones times
+// a scalar. We can save computation time by computing row sums of C.
+arma::mat kronecker_omm(const arma::mat &B, const arma::mat &C,
+                        arma::uword n_row, double scalar = 1);
+
 // Get squared distance matrix given the voxel coordinates for a region
 arma::mat squared_distance(arma::mat coords);
 

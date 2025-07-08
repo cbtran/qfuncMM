@@ -373,46 +373,46 @@ test_that("asymptotic var rho", {
 #   cat("avar_new:", avar_rho_new, "\n")
 # })
 
-# test_that("hcp asymp var approx test", {
-#   RhpcBLASctl::blas_set_num_threads(5)
-#   RhpcBLASctl::omp_set_num_threads(5)
+test_that("hcp asymp var approx test", {
+  RhpcBLASctl::blas_set_num_threads(5)
+  RhpcBLASctl::omp_set_num_threads(5)
 
-#   file1 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_249.json"
-#   file2 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_254.json"
-#   d1 <- jsonlite::read_json(file1, simplifyVector = TRUE)
-#   d1$stage1$sigma2_ep <- NA
-#   d2 <- jsonlite::read_json(file2, simplifyVector = TRUE)
-#   d2$stage1$sigma2_ep <- NA
+  file1 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_249.json"
+  file2 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_254.json"
+  d1 <- jsonlite::read_json(file1, simplifyVector = TRUE)
+  d1$stage1$sigma2_ep <- NA
+  d2 <- jsonlite::read_json(file2, simplifyVector = TRUE)
+  d2$stage1$sigma2_ep <- NA
 
-#   theta <- c(
-#     rho = 0.1,
-#     k_eta1 = 2.7,
-#     k_eta2 = 2.9,
-#     tau_eta = 0.3,
-#     nugget_eta = 0.1
-#   )
+  theta <- c(
+    rho = 0.1,
+    k_eta1 = 2.7,
+    k_eta2 = 2.9,
+    tau_eta = 0.3,
+    nugget_eta = 0.1
+  )
 
-#   tictoc::tic("rho approx")
-#   avar_rho <- get_asymp_var_rho(
-#     theta = theta,
-#     region1_info = d1,
-#     region2_info = d2,
-#     method = "vecchia",
-#     approx = TRUE,
-#     fast = FALSE
-#   )
-#   tictoc::toc()
-#   cat("avar:", avar_rho, "\n")
+  tictoc::tic("rho approx")
+  avar_rho <- get_asymp_var_rho(
+    theta = theta,
+    region1_info = d1,
+    region2_info = d2,
+    method = "vecchia",
+    approx = TRUE,
+    fast = FALSE
+  )
+  tictoc::toc()
+  cat("avar:", avar_rho, "\n")
 
-#   tictoc::tic("rho approx_new")
-#   avar_rho_new <- get_asymp_var_rho(
-#     theta = theta,
-#     region1_info = d1,
-#     region2_info = d2,
-#     method = "vecchia",
-#     approx = TRUE,
-#     fast = TRUE
-#   )
-#   tictoc::toc()
-#   cat("avar_new:", avar_rho_new, "\n")
-# })
+  tictoc::tic("rho approx_new")
+  avar_rho_new <- get_asymp_var_rho(
+    theta = theta,
+    region1_info = d1,
+    region2_info = d2,
+    method = "vecchia",
+    approx = TRUE,
+    fast = TRUE
+  )
+  tictoc::toc()
+  cat("avar_new:", avar_rho_new, "\n")
+})
