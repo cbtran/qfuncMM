@@ -667,8 +667,9 @@ double OptInter::ComputeAsympVarRhoApproxVecchia(const arma::mat &theta_stage2,
   Rcpp::Rcout << "schur... ";
   start_time = std::chrono::high_resolution_clock::now();
   // mat v21_v11inv_v12 = kronecker_mmm(eta21, At, v11invV12);
-  mat v21_v11inv_v12 = kronecker_omm(At, v11invV12, l2_, sqrt_var);
-  mat schur = v22 * sigma2_ep_r2 - rho * v21_v11inv_v12;
+  mat v21_v11inv_v12_1 = kronecker_omm(At, v11invV12, 1, sqrt_var);
+  // mat v21_v11inv_v12 = repmat(v21_v11inv_v12_1, l2_, 1);
+  mat schur = v22 * sigma2_ep_r2 - rho * repmat(v21_v11inv_v12_1, l2_, 1);
   v22.reset();
   end_time = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
@@ -679,8 +680,8 @@ double OptInter::ComputeAsympVarRhoApproxVecchia(const arma::mat &theta_stage2,
   start_time = std::chrono::high_resolution_clock::now();
   mat schur_inv = inv_sympd(schur);
   schur.reset();
-  mat y2 = schur_inv * v21_v11inv_v12;
-  v21_v11inv_v12.reset();
+  mat y2_1 = v21_v11inv_v12_1 * schur_inv;
+  v21_v11inv_v12_1.reset();
   end_time = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
                                                                    start_time);
@@ -708,12 +709,25 @@ double OptInter::ComputeAsympVarRhoApproxVecchia(const arma::mat &theta_stage2,
 
   Rcpp::Rcout << "solves 2... ";
   start_time = std::chrono::high_resolution_clock::now();
-  fim += accu(y2 % y2.t());
-  y2.diag() += 1 / rho;
+  // mat y2 = repmat(y2_1, l2_, 1);
+  mat y2t = repmat(y2_1.t(), 1, l2_);
+  fim += accu(y2t % y2t.t());
+  y2t.diag() += 1 / rho;
 
-  mat y1_x2_1 = v11invV12 * (y2 * y1_1);
-  mat y1_x2 = repmat(y1_x2_1, 1, l1_);
-  fim += 2 * trace(y1_x2);
+  mat y1_x2_1 = v11invV12 * (y2t * y1_1); // (m_ * l1_) x m_
+  y2t.reset();
+
+  // Compute trace efficiently without constructing the repeated matrix
+  // y1_x2_1 has shape (m_ * l1_) x m_, we need trace of m_ x m_ blocks
+  // This effectively computes trace(repmat(y1_x2_1, 1, l1_))
+  double trace_sum = 0.0;
+  for (int block = 0; block < l1_; block++) {
+    // Extract the m_ x m_ block starting at row (block * m_)
+    mat block_matrix = y1_x2_1.rows(block * m_, (block + 1) * m_ - 1);
+    trace_sum += trace(block_matrix);
+  }
+
+  fim += 2 * trace_sum;
 
   end_time = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
