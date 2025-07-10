@@ -749,24 +749,24 @@ double OptInter::ComputeAsympVarRhoApproxVecchiaBanded(
   double nuggetEta = theta_stage2(4);
 
   double timevar_eta = 1 + nuggetEta;
-  mat v11 =
-      mat(l1_, l1_, fill::value(timevar_eta * kEta1)) + timevar1 * lambda_r1_;
-
-  mat v22 = timevar_eta * mat(l2_, l2_, fill::value(timevar_eta * kEta2)) +
-            timevar2 * lambda_r2_;
-  if (!IsNoiseless(cov_setting_r1_)) {
-    v11.diag() += 1;
-  }
-  if (!IsNoiseless(cov_setting_r2_)) {
-    v22.diag() += 1;
-  }
-
   double sigma2_ep_r1 = 1, sigma2_ep_r2 = 1;
   if (!IsNoiseless(cov_setting_r1_)) {
     sigma2_ep_r1 = sigma2_ep_.first;
   }
   if (!IsNoiseless(cov_setting_r2_)) {
     sigma2_ep_r2 = sigma2_ep_.second;
+  }
+  mat v11 =
+      mat(l1_, l1_, fill::value(timevar_eta * kEta1)) + timevar1 * lambda_r1_;
+  mat v22 =
+      mat(l2_, l2_, fill::value(timevar_eta * kEta2)) + timevar2 * lambda_r2_;
+  if (!IsNoiseless(cov_setting_r1_)) {
+    v11.diag() += 1;
+    v11 *= sigma2_ep_r1;
+  }
+  if (!IsNoiseless(cov_setting_r2_)) {
+    v22.diag() += 1;
+    v22 *= sigma2_ep_r2;
   }
   double sqrt_var = sqrt(kEta1 * kEta2 * sigma2_ep_r1 * sigma2_ep_r2);
   vec onesL1(l1_, fill::value(sqrt_var));
@@ -788,7 +788,7 @@ double OptInter::ComputeAsympVarRhoApproxVecchiaBanded(
 
   mat v11invV12_kron = timevar_eta * inv_v11_eta * onesL1 * rho;
   v11invV12_kron = repmat(v11invV12_kron, 1, l2_);
-  mat schur_kron = v22 * sigma2_ep_r2;
+  mat schur_kron = v22;
   schur_kron -= pow(timevar_eta * rho * sqrt_var, 2) * accu(inv_v11_eta);
 
   mat schur_kron_inv;

@@ -421,20 +421,31 @@ test_that("hcp asymp var banded test", {
   RhpcBLASctl::blas_set_num_threads(1)
   RhpcBLASctl::omp_set_num_threads(1)
 
-  file1 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_31.json"
-  file2 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_254.json"
+  file1 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_21.json"
+  file2 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_252.json"
   d1 <- jsonlite::read_json(file1, simplifyVector = TRUE)
-  d1$stage1$sigma2_ep <- NA
+  # d1$stage1$sigma2_ep <- NA
   d2 <- jsonlite::read_json(file2, simplifyVector = TRUE)
   d2$stage1$sigma2_ep <- NA
-
   theta <- c(
-    rho = 0.1,
-    k_eta1 = 2.7,
-    k_eta2 = 2.9,
-    tau_eta = 0.3,
-    nugget_eta = 0.1
+    rho = 0.673,
+    k_eta1 = 0.340,
+    k_eta2 = 0.0000813,
+    tau_eta = 2.67,
+    nugget_eta = 3.07
   )
+
+  tictoc::tic("rho approx_slow")
+  avar_rho_slow <- get_asymp_var_rho(
+    theta = theta,
+    region1_info = d1,
+    region2_info = d2,
+    method = "vecchia",
+    approx = TRUE,
+    fast = FALSE
+  )
+  tictoc::toc()
+  cat("avar_slow:", avar_rho_slow, "\n")
 
   tictoc::tic("rho approx_new")
   avar_rho_new <- get_asymp_var_rho(
