@@ -84,7 +84,7 @@ get_asymp_var_rho <- function(
         cov_setting_id2 = cov_setting_dict(region2_info$cov_setting),
         kernel_type_id = kernel_dict("matern_5_2"),
         reml = method == "reml",
-        new_imp = fast
+        fast = fast
       )
     } else {
       temp <- theta["k_eta1"]
@@ -101,7 +101,7 @@ get_asymp_var_rho <- function(
         cov_setting_id2 = cov_setting_dict(region1_info$cov_setting),
         kernel_type_id = kernel_dict("matern_5_2"),
         reml = method == "reml",
-        new_imp = fast
+        fast = fast
       )
     }
     return(asympvar_rho)
