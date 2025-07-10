@@ -838,8 +838,6 @@ double OptInter::ComputeAsympVarRhoApproxVecchiaBanded(
   // mat schur_inv = kron(schur_kron_inv, eye(m_, m_));
   // schur.reset();
   // mat y2_1 = v21_v11inv_v12_1 * schur_inv;
-  mat v21_v11inv_v12_1_kron = timevar_eta * onesL1.t() * v11invV12_kron;
-  mat y2_1 = kron(v21_v11inv_v12_1_kron * schur_kron_inv, eye(m_, m_));
   // v21_v11inv_v12_1.reset();
   end_time = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
@@ -851,16 +849,20 @@ double OptInter::ComputeAsympVarRhoApproxVecchiaBanded(
   double fim = 0;
   // mat y1_1 = (kronecker_omm(At, schur_inv, 1, sqrt_var)).t();
   mat y1_1_kron = schur_kron_inv * onesL2 * timevar_eta;
+  // mat y1 = repmat(y1_1_kron, 1, l1_);
 
   // At.reset();
   // schur_inv.reset();
   // mat x1_1 = -v11invV12 * y1_1;
-  mat x1_1 = -kron(v11invV12_kron * y1_1_kron, eye(m_, m_));
-  mat x1 = repmat(x1_1, 1, l1_);
-  double accu_x = accu(x1 % x1.t());
+  // mat x1_1 = -kron(v11invV12_kron * y1_1_kron, eye(m_, m_));
+  // mat x1 = repmat(x1_1, 1, l1_);
+  // mat x1 = -kron(v11invV12_kron * y1, eye(m_, m_));
+  mat inner = repmat(v11invV12_kron * y1_1_kron, 1, l1_);
+  // double accu_x = accu(x1 % x1.t());
+  double accu_x = accu(inner % inner.t()) * m_;
   fim += accu_x;
-  x1_1.reset();
-  x1.reset();
+  // x1_1.reset();
+  // x1.reset();
 
   end_time = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
@@ -870,27 +872,36 @@ double OptInter::ComputeAsympVarRhoApproxVecchiaBanded(
   Rcpp::Rcout << "solves 2... ";
   start_time = std::chrono::high_resolution_clock::now();
   // mat y2 = repmat(y2_1, l2_, 1);
-  mat y2t = repmat(y2_1.t(), 1, l2_);
-  fim += accu(y2t % y2t.t());
-  y2t.diag() += 1 / rho;
+  mat v21_v11inv_v12_1_kron = timevar_eta * onesL1.t() * v11invV12_kron;
+  mat v21_v11inv_v12_kron = repmat(v21_v11inv_v12_1_kron, l2_, 1);
+  // mat y2_1 = kron(v21_v11inv_v12_1_kron * schur_kron_inv, eye(m_, m_));
+  // mat y2t = repmat(y2_1.t(), 1, l2_);
 
-  mat y1_1 = kron(y1_1_kron, eye(m_, m_));
-  mat v11invV12 = kron(v11invV12_kron, eye(m_, m_));
-  mat y1_x2_1 = v11invV12 * (y2t * y1_1); // (m_ * l1_) x m_
-  v11invV12.reset();
-  y2t.reset();
+  mat y2_kron = v21_v11inv_v12_kron * schur_kron_inv;
+  // fim += accu(y2t % y2t.t());
+  fim += accu(y2_kron % y2_kron.t()) * m_;
+  // y2t.diag() += 1 / rho;
+  y2_kron.diag() += 1 / rho;
+
+  // mat y1_1 = kron(y1_1_kron, eye(m_, m_));
+  // mat v11invV12 = kron(v11invV12_kron, eye(m_, m_));
+  // mat y1_x2_1 = v11invV12 * (y2t * y1_1); // (m_ * l1_) x m_
+  mat y1_x2_kron = repmat(v11invV12_kron * y2_kron.t() * y1_1_kron, 1, l1_);
+  fim += 2 * trace(y1_x2_kron) * m_;
+  // v11invV12.reset();
+  // y2t.reset();
 
   // Compute trace efficiently without constructing the repeated matrix
   // y1_x2_1 has shape (m_ * l1_) x m_, we need trace of m_ x m_ blocks
   // This effectively computes trace(repmat(y1_x2_1, 1, l1_))
-  double trace_sum = 0.0;
-  for (int block = 0; block < l1_; block++) {
-    // Extract the m_ x m_ block starting at row (block * m_)
-    mat block_matrix = y1_x2_1.rows(block * m_, (block + 1) * m_ - 1);
-    trace_sum += trace(block_matrix);
-  }
+  // double trace_sum = 0.0;
+  // for (int block = 0; block < l1_; block++) {
+  //   // Extract the m_ x m_ block starting at row (block * m_)
+  //   mat block_matrix = y1_x2_1.rows(block * m_, (block + 1) * m_ - 1);
+  //   trace_sum += trace(block_matrix);
+  // }
 
-  fim += 2 * trace_sum;
+  // fim += 2 * trace_sum;
 
   end_time = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
