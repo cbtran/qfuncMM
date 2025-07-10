@@ -772,13 +772,38 @@ double OptInter::ComputeAsympVarRhoApproxVecchiaBanded(
   vec onesL1(l1_, fill::value(sqrt_var));
   vec onesL2(l2_, fill::value(sqrt_var));
 
-  mat inv_v11_eta = inv_sympd(v11);
+  mat inv_v11_eta;
+  int max_attempts = 10;
+  int attempt = 0;
+  double reg = 1e-10 * trace(v11) / v11.n_rows;
+  bool success = false;
+  while (!success && attempt < max_attempts) {
+    success = inv_sympd(inv_v11_eta, v11);
+    if (!success) {
+      v11.diag() += reg;
+      attempt++;
+      reg *= 10.0;
+    }
+  }
+
   mat v11invV12_kron = timevar_eta * inv_v11_eta * onesL1 * rho;
   v11invV12_kron = repmat(v11invV12_kron, 1, l2_);
   mat schur_kron = v22 * sigma2_ep_r2;
   schur_kron -= pow(timevar_eta * rho * sqrt_var, 2) * accu(inv_v11_eta);
-  v22.reset();
-  mat schur_kron_inv = inv_sympd(schur_kron);
+
+  mat schur_kron_inv;
+  max_attempts = 10;
+  attempt = 0;
+  reg = 1e-10 * trace(schur_kron) / schur_kron.n_rows;
+  success = false;
+  while (!success && attempt < max_attempts) {
+    success = inv_sympd(schur_kron_inv, schur_kron);
+    if (!success) {
+      schur_kron.diag() += reg;
+      attempt++;
+      reg *= 10.0;
+    }
+  }
 
   double fim = 0;
   mat y1_1_kron = schur_kron_inv * onesL2 * timevar_eta;
