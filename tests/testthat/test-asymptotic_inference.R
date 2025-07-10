@@ -418,8 +418,8 @@ test_that("hcp asymp var approx test", {
 })
 
 test_that("hcp asymp var banded test", {
-  RhpcBLASctl::blas_set_num_threads(5)
-  RhpcBLASctl::omp_set_num_threads(5)
+  RhpcBLASctl::blas_set_num_threads(1)
+  RhpcBLASctl::omp_set_num_threads(1)
 
   file1 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_31.json"
   file2 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_254.json"
