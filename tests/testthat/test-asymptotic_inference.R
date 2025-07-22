@@ -246,216 +246,45 @@ test_that("asymptotic var rho", {
   # expect_true(!isTRUE(all.equal(avar_reml_full, avar_vecchia_full)))
 })
 
-# test_that("large test", {
+# test_that("hcp asymp var banded test", {
 #   RhpcBLASctl::blas_set_num_threads(1)
-#   RhpcBLASctl::omp_set_num_threads(10)
+#   RhpcBLASctl::omp_set_num_threads(1)
 
-#   c1 <- qfunc_sim_data$coords[[1]]
-#   c2 <- qfunc_sim_data$coords[[2]]
-
+#   file1 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_21.json"
+#   file2 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_252.json"
+#   d1 <- jsonlite::read_json(file1, simplifyVector = TRUE)
+#   # d1$stage1$sigma2_ep <- NA
+#   d2 <- jsonlite::read_json(file2, simplifyVector = TRUE)
+#   d2$stage1$sigma2_ep <- NA
 #   theta <- c(
-#     rho = 0.1,
-#     k_eta1 = 2.7,
-#     k_eta2 = 2.9,
-#     tau_eta = 0.3,
-#     nugget_eta = 0.1
+#     rho = 0.673,
+#     k_eta1 = 0.340,
+#     k_eta2 = 0.0000813,
+#     tau_eta = 2.67,
+#     nugget_eta = 3.07
 #   )
 
-#   m <- 60
-#   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
-#   stage1_r1 <- c(
-#     phi_gamma = 0.76,
-#     tau_gamma = 0.52,
-#     k_gamma = 2.05,
-#     nugget_gamma = 0.14,
-#     sigma2_ep = 0.16
-#   )
-
-#   stage1_r2 <- c(
-#     phi_gamma = 1.25,
-#     tau_gamma = 0.48,
-#     k_gamma = 2.09,
-#     nugget_gamma = 0.36,
-#     sigma2_ep = 0.18
-#   )
-
-#   tictoc::tic("Fisher Information Matrix - large test")
-#   fisher_info <- get_fisher_info(
+#   tictoc::tic("rho approx_slow")
+#   avar_rho_slow <- get_asymp_var_rho(
 #     theta = theta,
-#     coords_r1 = c1,
-#     coords_r2 = c2,
-#     time_sqrd_mat = time_sqrd_mat,
-#     stage1_r1 = stage1_r1,
-#     stage1_r2 = stage1_r2,
-#     cov_setting_id1 = 0L,
-#     cov_setting_id2 = 0L,
-#     kernel_type_id = kernel_dict("matern_5_2"),
-#     reml = TRUE
+#     region1_info = d1,
+#     region2_info = d2,
+#     method = "vecchia",
+#     approx = TRUE,
+#     fast = FALSE
 #   )
 #   tictoc::toc()
-#   cat("trace:", sum(diag(fisher_info)), "\n")
-#   cat("frob:", sqrt(sum(fisher_info^2)), "\n")
-
-#   expect_equal(dim(fisher_info), c(15, 15))
-#   expect_names <- c(
-#     "phi_gamma1", "tau_gamma1", "k_gamma1", "nugget_gamma1",
-#     "phi_gamma2", "tau_gamma2", "k_gamma2", "nugget_gamma2",
-#     names(theta), "sigma2_ep1", "sigma2_ep2"
-#   )
-#   expect_equal(colnames(fisher_info), expect_names)
-#   expect_equal(rownames(fisher_info), expect_names)
-# })
-
-# test_that("large asymp var approx test", {
-#   RhpcBLASctl::blas_set_num_threads(1)
-#   RhpcBLASctl::omp_set_num_threads(10)
-
-#   c1 <- qfunc_sim_data$coords[[1]]
-#   c2 <- qfunc_sim_data$coords[[2]]
-
-#   theta <- c(
-#     rho = 0.1,
-#     k_eta1 = 2.7,
-#     k_eta2 = 2.9,
-#     tau_eta = 0.3,
-#     nugget_eta = 0.1
-#   )
-
-#   m <- 60
-#   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
-#   stage1_r1 <- c(
-#     phi_gamma = 0.76,
-#     tau_gamma = 0.52,
-#     k_gamma = 2.05,
-#     nugget_gamma = 0.14,
-#     sigma2_ep = 0.16
-#   )
-
-#   stage1_r2 <- c(
-#     phi_gamma = 1.25,
-#     tau_gamma = 0.48,
-#     k_gamma = 2.09,
-#     nugget_gamma = 0.36,
-#     sigma2_ep = 0.18
-#   )
-
-#   tictoc::tic("rho approx")
-#   avar_rho <- get_asymp_var_rho_approx_cpp(
-#     theta = theta,
-#     coords_r1 = c1,
-#     coords_r2 = c2,
-#     time_sqrd_mat = time_sqrd_mat,
-#     stage1_r1 = stage1_r1,
-#     stage1_r2 = stage1_r2,
-#     cov_setting_id1 = 0L,
-#     cov_setting_id2 = 0L,
-#     kernel_type_id = kernel_dict("matern_5_2"),
-#     reml = FALSE
-#   )
-#   tictoc::toc()
-#   cat("avar:", avar_rho, "\n")
+#   cat("avar_slow:", avar_rho_slow, "\n")
 
 #   tictoc::tic("rho approx_new")
-#   avar_rho_new <- get_asymp_var_rho_approx_cpp(
+#   avar_rho_new <- get_asymp_var_rho(
 #     theta = theta,
-#     coords_r1 = c1,
-#     coords_r2 = c2,
-#     time_sqrd_mat = time_sqrd_mat,
-#     stage1_r1 = stage1_r1,
-#     stage1_r2 = stage1_r2,
-#     cov_setting_id1 = 0L,
-#     cov_setting_id2 = 0L,
-#     kernel_type_id = kernel_dict("matern_5_2"),
-#     reml = FALSE,
-#     new_imp = TRUE
+#     region1_info = d1,
+#     region2_info = d2,
+#     method = "vecchia",
+#     approx = TRUE,
+#     fast = TRUE
 #   )
 #   tictoc::toc()
 #   cat("avar_new:", avar_rho_new, "\n")
 # })
-
-test_that("hcp asymp var approx test", {
-  RhpcBLASctl::blas_set_num_threads(5)
-  RhpcBLASctl::omp_set_num_threads(5)
-
-  file1 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_249.json"
-  file2 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_254.json"
-  d1 <- jsonlite::read_json(file1, simplifyVector = TRUE)
-  d1$stage1$sigma2_ep <- NA
-  d2 <- jsonlite::read_json(file2, simplifyVector = TRUE)
-  d2$stage1$sigma2_ep <- NA
-
-  theta <- c(
-    rho = 0.1,
-    k_eta1 = 2.7,
-    k_eta2 = 2.9,
-    tau_eta = 0.3,
-    nugget_eta = 0.1
-  )
-
-  tictoc::tic("rho approx")
-  avar_rho <- get_asymp_var_rho(
-    theta = theta,
-    region1_info = d1,
-    region2_info = d2,
-    method = "vecchia",
-    approx = TRUE,
-    fast = FALSE
-  )
-  tictoc::toc()
-  cat("avar:", avar_rho, "\n")
-
-  tictoc::tic("rho approx_new")
-  avar_rho_new <- get_asymp_var_rho(
-    theta = theta,
-    region1_info = d1,
-    region2_info = d2,
-    method = "vecchia",
-    approx = TRUE,
-    fast = TRUE
-  )
-  tictoc::toc()
-  cat("avar_new:", avar_rho_new, "\n")
-})
-
-test_that("hcp asymp var banded test", {
-  RhpcBLASctl::blas_set_num_threads(1)
-  RhpcBLASctl::omp_set_num_threads(1)
-
-  file1 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_21.json"
-  file2 <- "scratch/test_out/qfuncMM_stage1_intra_region_111716_252.json"
-  d1 <- jsonlite::read_json(file1, simplifyVector = TRUE)
-  # d1$stage1$sigma2_ep <- NA
-  d2 <- jsonlite::read_json(file2, simplifyVector = TRUE)
-  d2$stage1$sigma2_ep <- NA
-  theta <- c(
-    rho = 0.673,
-    k_eta1 = 0.340,
-    k_eta2 = 0.0000813,
-    tau_eta = 2.67,
-    nugget_eta = 3.07
-  )
-
-  tictoc::tic("rho approx_slow")
-  avar_rho_slow <- get_asymp_var_rho(
-    theta = theta,
-    region1_info = d1,
-    region2_info = d2,
-    method = "vecchia",
-    approx = TRUE,
-    fast = FALSE
-  )
-  tictoc::toc()
-  cat("avar_slow:", avar_rho_slow, "\n")
-
-  tictoc::tic("rho approx_new")
-  avar_rho_new <- get_asymp_var_rho(
-    theta = theta,
-    region1_info = d1,
-    region2_info = d2,
-    method = "vecchia",
-    approx = TRUE,
-    fast = TRUE
-  )
-  tictoc::toc()
-  cat("avar_new:", avar_rho_new, "\n")
-})
