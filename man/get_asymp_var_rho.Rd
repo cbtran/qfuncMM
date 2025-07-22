@@ -9,8 +9,8 @@ get_asymp_var_rho(
   region1_info,
   region2_info,
   method = c("reml", "vecchia"),
-  approx = FALSE,
-  fast = FALSE
+  approx = TRUE,
+  fast = TRUE
 )
 }
 \arguments{
