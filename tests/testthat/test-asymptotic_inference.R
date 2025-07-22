@@ -234,8 +234,8 @@ test_that("asymptotic var rho", {
     num_timepoints = m
   )
 
-  avar_reml <- get_asymp_var_rho(theta, region1_info, region2_info, "reml")
-  avar_vecchia <- get_asymp_var_rho(theta, region1_info, region2_info, "vecchia")
+  avar_reml <- get_asymp_var_rho(theta, region1_info, region2_info, "reml", FALSE, FALSE)
+  avar_vecchia <- get_asymp_var_rho(theta, region1_info, region2_info, "vecchia", FALSE, FALSE)
 
   expect_true(!isTRUE(all.equal(avar_reml, avar_vecchia)))
 
