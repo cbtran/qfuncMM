@@ -516,6 +516,190 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformation(
   return r_matrix;
 }
 
+// Compute Fisher Information Matrix assuming A and B are diagonal
+Rcpp::NumericMatrix OptInter::ComputeFisherInformationDiagTime(
+    const arma::mat &theta_stage1, const arma::mat &theta_stage2,
+    const arma::mat &dist_sqrd1, const arma::mat &dist_sqrd2, arma::mat *C1,
+    arma::mat *C2) {
+  using namespace arma;
+
+  // stage1 parameter list:
+  // phi, tau, k, nugget
+  double phi_gamma1 = theta_stage1(0, 0);
+  double k_gamma1 = theta_stage1(0, 2);
+  double nugget_gamma1 = theta_stage1(0, 3);
+  double phi_gamma2 = theta_stage1(1, 0);
+  double k_gamma2 = theta_stage1(1, 2);
+  double nugget_gamma2 = theta_stage1(1, 3);
+
+  // stage2 parameter list:
+  // rho, kEta1, kEta2, tauEta, nugget
+  double rho = theta_stage2(0);
+  double kEta1 = theta_stage2(1);
+  double kEta2 = theta_stage2(2);
+  double tauEta = theta_stage2(3);
+  double nuggetEta = theta_stage2(4);
+
+  double timevar_eta = 1 + nuggetEta;
+  double timevar1 = k_gamma1 + nugget_gamma1;
+  double timevar2 = k_gamma2 + nugget_gamma2;
+  double sigma2_ep_r1 = 1, sigma2_ep_r2 = 1;
+  if (!IsNoiseless(cov_setting_r1_)) {
+    sigma2_ep_r1 = sigma2_ep_.first;
+  }
+  if (!IsNoiseless(cov_setting_r2_)) {
+    sigma2_ep_r2 = sigma2_ep_.second;
+  }
+  mat w11 =
+      mat(l1_, l1_, fill::value(timevar_eta * kEta1)) + timevar1 * lambda_r1_;
+  mat w22 =
+      mat(l2_, l2_, fill::value(timevar_eta * kEta2)) + timevar2 * lambda_r2_;
+  if (!IsNoiseless(cov_setting_r1_)) {
+    w11.diag() += 1;
+    w11 *= sigma2_ep_r1;
+  }
+  if (!IsNoiseless(cov_setting_r2_)) {
+    w22.diag() += 1;
+    w22 *= sigma2_ep_r2;
+  }
+  // double sqrt_var = sqrt(kEta1 * kEta2 * sigma2_ep_r1 * sigma2_ep_r2);
+  double r = sqrt(kEta1 * kEta2 * sigma2_ep_r1 * sigma2_ep_r2) * rho;
+  // vec onesL1(l1_, fill::value(sqrt_var));
+  // vec onesL2(l2_, fill::value(sqrt_var));
+
+  mat w11_inv;
+  int max_attempts = 10;
+  int attempt = 0;
+  double reg = 1e-10 * trace(w11) / w11.n_rows;
+  bool success = false;
+  while (!success && attempt < max_attempts) {
+    success = inv_sympd(w11_inv, w11);
+    if (!success) {
+      w11.diag() += reg;
+      attempt++;
+      reg *= 10.0;
+    }
+  }
+
+  // Prepare Schur complement
+  double w11_inv_sum = accu(w11_inv);
+  mat schur = w22 - pow(r * timevar_eta, 2) * w11_inv_sum;
+  mat schur_inv;
+  max_attempts = 10;
+  attempt = 0;
+  reg = 1e-10 * trace(schur) / schur.n_rows;
+  success = false;
+  while (!success && attempt < max_attempts) {
+    success = inv_sympd(schur_inv, schur);
+    if (!success) {
+      schur.diag() += reg;
+      attempt++;
+      reg *= 10.0;
+    }
+  }
+
+  // W12 * S^{-1}
+  rowvec w12_schur_inv_row = r * timevar_eta * sum(schur_inv, 0);
+  mat w12_schur_inv = repmat(w12_schur_inv_row, l1_, 1);
+  // W21 * W11_inv
+  rowvec w21_w11_inv_row = r * timevar_eta * sum(w11_inv, 0);
+  mat w21_w11_inv = repmat(w21_w11_inv_row, l2_, 1);
+
+  mat &vinv_left_22 = schur_inv;
+  mat vinv_left_12 = -w11_inv * w12_schur_inv;
+  mat vinv_left_21 = -schur_inv * w21_w11_inv;
+
+  rowvec vinv_left_11_row = -r * timevar_eta * sum(vinv_left_21, 0);
+  mat vinv_left_11 = repmat(vinv_left_11_row, l1_, 1);
+  vinv_left_11.diag() += 1;
+  vinv_left_11 = w11_inv * vinv_left_11;
+
+  mat vinv_left = join_vert(join_horiz(vinv_left_11, vinv_left_12),
+                            join_horiz(vinv_left_21, vinv_left_22));
+
+  int nvars = 8;
+  // store components of the form Vinv * dV_i
+  std::vector<mat *> vinv_dv_components(nvars);
+
+  // Derivatives wrt stage 1 parameters
+  mat dC_dphi_gamma1 =
+      get_cor_mat_deriv(KernelType::Matern52, dist_sqrd1, phi_gamma1) *
+      sigma2_ep_r1 * timevar1;
+  mat dC_dphi_gamma2 =
+      get_cor_mat_deriv(KernelType::Matern52, dist_sqrd2, phi_gamma2) *
+      sigma2_ep_r2 * timevar2;
+  mat vinv_dgamma1 =
+      join_vert(join_horiz(vinv_left_11 * dC_dphi_gamma1, zeros(l1_, l2_)),
+                join_horiz(vinv_left_21 * dC_dphi_gamma1, zeros(l2_, l2_)));
+  vinv_dv_components[0] = &vinv_dgamma1;
+  mat vinv_dtimevar1 = join_vert(
+      join_horiz(vinv_left_11 * lambda_r1_ * sigma2_ep_r1, zeros(l1_, l2_)),
+      join_horiz(vinv_left_21 * lambda_r1_ * sigma2_ep_r1, zeros(l2_, l2_)));
+  vinv_dv_components[1] = &vinv_dtimevar1;
+  mat vinv_dgamma2 =
+      join_vert(join_horiz(zeros(l1_, l1_), vinv_left_12 * dC_dphi_gamma2),
+                join_horiz(zeros(l2_, l1_), vinv_left_22 * dC_dphi_gamma2));
+  vinv_dv_components[2] = &vinv_dgamma2;
+  mat vinv_dtimevar2 = join_vert(
+      join_horiz(zeros(l1_, l1_), vinv_left_12 * lambda_r2_ * sigma2_ep_r2),
+      join_horiz(zeros(l2_, l1_), vinv_left_22 * lambda_r2_ * sigma2_ep_r2));
+  vinv_dv_components[3] = &vinv_dtimevar2;
+
+  mat k21 = mat(l2_, l1_,
+                fill::value(sqrt(kEta1 * kEta2 * sigma2_ep_r1 * sigma2_ep_r2) *
+                            timevar_eta));
+  mat dv_drho = join_vert(join_horiz(zeros(l1_, l1_), k21.t()),
+                          join_horiz(k21, zeros(l2_, l2_)));
+  mat vinv_drho = vinv_left * dv_drho;
+  vinv_dv_components[4] = &vinv_drho;
+
+  mat rho12_block =
+      mat(l1_, l2_, fill::value(sqrt(sigma2_ep_r1 * sigma2_ep_r2) * rho));
+
+  mat dv_dk_eta1 =
+      timevar_eta *
+      join_vert(join_horiz(mat(l1_, l1_, fill::value(sigma2_ep_r1)),
+                           rho12_block * sqrt(kEta2 / kEta1) / 2),
+                join_horiz(rho12_block.t() * sqrt(kEta2 / kEta1) / 2,
+                           zeros(l2_, l2_)));
+  mat vinv_dk_eta1 = vinv_left * dv_dk_eta1;
+  vinv_dv_components[5] = &vinv_dk_eta1;
+
+  mat dv_dk_eta2 =
+      timevar_eta *
+      join_vert(
+          join_horiz(zeros(l1_, l1_), rho12_block * sqrt(kEta1 / kEta2) / 2),
+          join_horiz(rho12_block.t() * sqrt(kEta1 / kEta2) / 2,
+                     mat(l2_, l2_, fill::value(sigma2_ep_r2))));
+  mat vinv_dk_eta2 = vinv_left * dv_dk_eta2;
+  vinv_dv_components[6] = &vinv_dk_eta2;
+
+  mat dv_dnugget_eta =
+      join_vert(join_horiz(mat(l1_, l1_, fill::value(kEta1 * sigma2_ep_r1)),
+                           mat(l1_, l2_, fill::value(r))),
+                join_horiz(mat(l2_, l1_, fill::value(r)),
+                           mat(l2_, l2_, fill::value(kEta2 * sigma2_ep_r2))));
+  mat vinv_dnugget_eta = vinv_left * dv_dnugget_eta;
+  vinv_dv_components[7] = &vinv_dnugget_eta;
+
+  Rcpp::NumericMatrix fim(nvars, nvars);
+  for (int i = 0; i < nvars; i++) {
+    for (int j = i; j < nvars; j++) {
+      double trace_val =
+          trace((*vinv_dv_components[i]) * (*vinv_dv_components[j])) * m_ / 2.0;
+      fim(i, j) = trace_val;
+      if (i != j) {
+        fim(j, i) = trace_val;
+      }
+    }
+  }
+  Rcpp::CharacterVector param_names({"phi_gamma1", "k_gamma1", "phi_gamma2",
+                                     "k_gamma2", "rho", "k_eta1", "k_eta2",
+                                     "nugget_eta"});
+  fim.attr("dimnames") = Rcpp::List::create(param_names, param_names);
+  return fim;
+}
+
 // Compute Fisher Information for rho only
 double OptInter::ComputeAsympVarRhoApprox(const arma::mat &theta_stage2,
                                           const arma::mat &dist_sqrd1,
@@ -609,22 +793,20 @@ OptInter::ComputeAsympVarRhoApproxVecchia(const arma::mat &theta_stage2) {
   double tauEta = theta_stage2(3);
   double nuggetEta = theta_stage2(4);
 
-  Rcpp::Rcout << "Setup... ";
-  auto start_time = std::chrono::high_resolution_clock::now();
   // A Matrix
   mat At = rbf(time_sqrd_, tauEta);
   At.diag() += nuggetEta;
 
-  mat v11 = lambda_r1_;
-  v11 += repmat(kEta1 * At, l1_, l1_);
-  mat v22 = lambda_r2_;
-  v22 += repmat(kEta2 * At, l2_, l2_);
+  mat w11 = lambda_r1_;
+  w11 += repmat(kEta1 * At, l1_, l1_);
+  mat w22 = lambda_r2_;
+  w22 += repmat(kEta2 * At, l2_, l2_);
   // mat v12 = repmat(rho * sqrt(kEta1 * kEta2) * At, l1_, l2_);
   if (!IsNoiseless(cov_setting_r1_)) {
-    v11.diag() += 1;
+    w11.diag() += 1;
   }
   if (!IsNoiseless(cov_setting_r2_)) {
-    v22.diag() += 1;
+    w22.diag() += 1;
   }
 
   double sigma2_ep_r1 = 1, sigma2_ep_r2 = 1;
@@ -638,56 +820,25 @@ OptInter::ComputeAsympVarRhoApproxVecchia(const arma::mat &theta_stage2) {
   //     l2_, l1_, fill::value(sqrt(kEta1 * kEta2 * sigma2_ep_r1 *
   //     sigma2_ep_r2)));
   double sqrt_var = sqrt(kEta1 * kEta2 * sigma2_ep_r1 * sigma2_ep_r2);
-  auto end_time = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-      end_time - start_time);
-  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
-
   // Compute the Schur components
-  Rcpp::Rcout << "v11inv... ";
-  start_time = std::chrono::high_resolution_clock::now();
-  mat v11inv = inv_sympd(v11) / sigma2_ep_r1;
-  end_time = std::chrono::high_resolution_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
-                                                                   start_time);
-  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
-  v11.reset(); // Free memory since matrix no longer needed
+  mat v11inv = inv_sympd(w11) / sigma2_ep_r1;
+  w11.reset(); // Free memory since matrix no longer needed
 
-  Rcpp::Rcout << "v11invV12... ";
-  start_time = std::chrono::high_resolution_clock::now();
   // mat v11invV12 = (kronecker_mmm(rho * eta21, At, v11inv)).t();
   mat v11invV12 = (kronecker_omm(At, v11inv, l2_, rho * sqrt_var)).t();
   v11inv.reset();
-  end_time = std::chrono::high_resolution_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
-                                                                   start_time);
-  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
 
-  Rcpp::Rcout << "schur... ";
-  start_time = std::chrono::high_resolution_clock::now();
   // mat v21_v11inv_v12 = kronecker_mmm(eta21, At, v11invV12);
   mat v21_v11inv_v12_1 = kronecker_omm(At, v11invV12, 1, sqrt_var);
   // mat v21_v11inv_v12 = repmat(v21_v11inv_v12_1, l2_, 1);
-  mat schur = v22 * sigma2_ep_r2 - rho * repmat(v21_v11inv_v12_1, l2_, 1);
-  v22.reset();
-  end_time = std::chrono::high_resolution_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
-                                                                   start_time);
-  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
+  mat schur = w22 * sigma2_ep_r2 - rho * repmat(v21_v11inv_v12_1, l2_, 1);
+  w22.reset();
 
-  Rcpp::Rcout << "schur inv... ";
-  start_time = std::chrono::high_resolution_clock::now();
   mat schur_inv = inv_sympd(schur);
   schur.reset();
   mat y2_1 = v21_v11inv_v12_1 * schur_inv;
   v21_v11inv_v12_1.reset();
-  end_time = std::chrono::high_resolution_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
-                                                                   start_time);
-  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
 
-  Rcpp::Rcout << "solves 1... ";
-  start_time = std::chrono::high_resolution_clock::now();
   double fim = 0;
   mat y1_1 = (kronecker_omm(At, schur_inv, 1, sqrt_var)).t();
 
@@ -701,13 +852,6 @@ OptInter::ComputeAsympVarRhoApproxVecchia(const arma::mat &theta_stage2) {
   x1_1.reset();
   x1.reset();
 
-  end_time = std::chrono::high_resolution_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
-                                                                   start_time);
-  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
-
-  Rcpp::Rcout << "solves 2... ";
-  start_time = std::chrono::high_resolution_clock::now();
   // mat y2 = repmat(y2_1, l2_, 1);
   mat y2t = repmat(y2_1.t(), 1, l2_);
   fim += accu(y2t % y2t.t());
@@ -727,11 +871,6 @@ OptInter::ComputeAsympVarRhoApproxVecchia(const arma::mat &theta_stage2) {
   }
 
   fim += 2 * trace_sum;
-
-  end_time = std::chrono::high_resolution_clock::now();
-  duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
-                                                                   start_time);
-  Rcpp::Rcout << duration.count() / 1000.0 << " s" << std::endl;
 
   return 2 / fim;
 }
@@ -756,17 +895,17 @@ double OptInter::ComputeAsympVarRhoApproxVecchiaBanded(
   if (!IsNoiseless(cov_setting_r2_)) {
     sigma2_ep_r2 = sigma2_ep_.second;
   }
-  mat v11 =
+  mat w11 =
       mat(l1_, l1_, fill::value(timevar_eta * kEta1)) + timevar1 * lambda_r1_;
-  mat v22 =
+  mat w22 =
       mat(l2_, l2_, fill::value(timevar_eta * kEta2)) + timevar2 * lambda_r2_;
   if (!IsNoiseless(cov_setting_r1_)) {
-    v11.diag() += 1;
-    v11 *= sigma2_ep_r1;
+    w11.diag() += 1;
+    w11 *= sigma2_ep_r1;
   }
   if (!IsNoiseless(cov_setting_r2_)) {
-    v22.diag() += 1;
-    v22 *= sigma2_ep_r2;
+    w22.diag() += 1;
+    w22 *= sigma2_ep_r2;
   }
   double sqrt_var = sqrt(kEta1 * kEta2 * sigma2_ep_r1 * sigma2_ep_r2);
   vec onesL1(l1_, fill::value(sqrt_var));
@@ -775,12 +914,12 @@ double OptInter::ComputeAsympVarRhoApproxVecchiaBanded(
   mat inv_v11_eta;
   int max_attempts = 10;
   int attempt = 0;
-  double reg = 1e-10 * trace(v11) / v11.n_rows;
+  double reg = 1e-10 * trace(w11) / w11.n_rows;
   bool success = false;
   while (!success && attempt < max_attempts) {
-    success = inv_sympd(inv_v11_eta, v11);
+    success = inv_sympd(inv_v11_eta, w11);
     if (!success) {
-      v11.diag() += reg;
+      w11.diag() += reg;
       attempt++;
       reg *= 10.0;
     }
@@ -788,7 +927,7 @@ double OptInter::ComputeAsympVarRhoApproxVecchiaBanded(
 
   mat v11invV12_kron = timevar_eta * inv_v11_eta * onesL1 * rho;
   v11invV12_kron = repmat(v11invV12_kron, 1, l2_);
-  mat schur_kron = v22;
+  mat schur_kron = w22;
   schur_kron -= pow(timevar_eta * rho * sqrt_var, 2) * accu(inv_v11_eta);
 
   mat schur_kron_inv;

@@ -203,7 +203,7 @@ get_fisher_info(const arma::vec &theta, const arma::mat &coords_r1,
                 const arma::mat &coords_r2, const arma::mat &time_sqrd_mat,
                 const Rcpp::NumericVector &stage1_r1,
                 const Rcpp::NumericVector &stage1_r2, int cov_setting_id1,
-                int cov_setting_id2, int kernel_type_id, bool reml) {
+                int cov_setting_id2, int kernel_type_id, bool reml, bool fast) {
   using arma::mat;
   using arma::vec;
   int m = time_sqrd_mat.n_rows;
@@ -226,8 +226,15 @@ get_fisher_info(const arma::vec &theta, const arma::mat &coords_r1,
                                               stage1_r2["tau_gamma"]) +
            stage1_r2["nugget_gamma"] * arma::eye(m, m);
 
-  const mat lambda_region1 = arma::kron(C1, B1);
-  const mat lambda_region2 = arma::kron(C2, B2);
+  mat lambda_region1;
+  mat lambda_region2;
+  if (fast) {
+    lambda_region1 = C1;
+    lambda_region2 = C2;
+  } else {
+    lambda_region1 = arma::kron(C1, B1);
+    lambda_region2 = arma::kron(C2, B2);
+  }
 
   // We don't need the data matrices for Fisher information, so we pass in
   // dummies.
@@ -242,9 +249,17 @@ get_fisher_info(const arma::vec &theta, const arma::mat &coords_r1,
                           stage1_r1["k_gamma"], stage1_r1["nugget_gamma"]};
   stage1_params.row(1) = {stage1_r2["phi_gamma"], stage1_r2["tau_gamma"],
                           stage1_r2["k_gamma"], stage1_r2["nugget_gamma"]};
-  Rcpp::NumericMatrix fisher_info = opt_inter.ComputeFisherInformation(
-      stage1_params, theta_vec, sqrd_dist_region1, sqrd_dist_region2, &C1, &B1,
-      &C2, &B2, reml);
+
+  Rcpp::NumericMatrix fisher_info;
+  if (fast) {
+    fisher_info = opt_inter.ComputeFisherInformationDiagTime(
+        stage1_params, theta_vec, sqrd_dist_region1, sqrd_dist_region2, &C1,
+        &C2);
+  } else {
+    fisher_info = opt_inter.ComputeFisherInformation(
+        stage1_params, theta_vec, sqrd_dist_region1, sqrd_dist_region2, &C1,
+        &B1, &C2, &B2, reml);
+  }
 
   return fisher_info;
 }

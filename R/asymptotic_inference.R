@@ -117,7 +117,8 @@ get_asymp_var_rho <- function(
     cov_setting_id1 = cov_setting_dict(region1_info$cov_setting),
     cov_setting_id2 = cov_setting_dict(region2_info$cov_setting),
     kernel_type_id = kernel_dict("matern_5_2"),
-    reml = method == "reml"
+    reml = method == "reml",
+    fast = fast
   )
 
   rho_col_id <- which(colnames(fisher_info_mx) == "rho")
