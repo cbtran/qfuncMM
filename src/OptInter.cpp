@@ -4,7 +4,6 @@
 #include "get_cor_mat.h"
 #include "helper.h"
 #include "rbf.h"
-#include <chrono>
 #include <math.h>
 
 #ifdef _OPENMP
@@ -554,6 +553,7 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformationDiagTime(
       mat(l1_, l1_, fill::value(timevar_eta * kEta1)) + timevar1 * lambda_r1_;
   mat w22 =
       mat(l2_, l2_, fill::value(timevar_eta * kEta2)) + timevar2 * lambda_r2_;
+
   if (!IsNoiseless(cov_setting_r1_)) {
     w11.diag() += 1;
     w11 *= sigma2_ep_r1;
@@ -562,10 +562,7 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformationDiagTime(
     w22.diag() += 1;
     w22 *= sigma2_ep_r2;
   }
-  // double sqrt_var = sqrt(kEta1 * kEta2 * sigma2_ep_r1 * sigma2_ep_r2);
   double r = sqrt(kEta1 * kEta2 * sigma2_ep_r1 * sigma2_ep_r2) * rho;
-  // vec onesL1(l1_, fill::value(sqrt_var));
-  // vec onesL2(l2_, fill::value(sqrt_var));
 
   mat w11_inv;
   int max_attempts = 10;
@@ -617,9 +614,15 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformationDiagTime(
   mat vinv_left = join_vert(join_horiz(vinv_left_11, vinv_left_12),
                             join_horiz(vinv_left_21, vinv_left_22));
 
-  int nvars = 8;
   // store components of the form Vinv * dV_i
-  std::vector<mat *> vinv_dv_components(nvars);
+  Rcpp::CharacterVector param_names({"phi_gamma1", "k_gamma1", "phi_gamma2",
+                                     "k_gamma2", "rho", "k_eta1", "k_eta2",
+                                     "nugget_eta"});
+  std::vector<mat *> vinv_dv_components(8);
+
+  // Store conditional matrices in a stable container
+  std::vector<mat> conditional_matrices;
+  conditional_matrices.reserve(2); // Pre-allocate for up to 2 matrices
 
   // Derivatives wrt stage 1 parameters
   mat dC_dphi_gamma1 =
@@ -682,6 +685,36 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformationDiagTime(
   mat vinv_dnugget_eta = vinv_left * dv_dnugget_eta;
   vinv_dv_components[7] = &vinv_dnugget_eta;
 
+  if (!IsNoiseless(cov_setting_r1_)) {
+    mat dw11 =
+        mat(l1_, l1_, fill::value(timevar_eta * kEta1)) + timevar1 * lambda_r1_;
+    dw11.diag() += 1;
+    mat dw12 =
+        mat(l1_, l2_,
+            fill::value(timevar_eta * sqrt(kEta1 * kEta2 * sigma2_ep_r2) * rho /
+                        (2 * sqrt(sigma2_ep_r1))));
+    mat dv_dsigma2_ep1 = join_vert(join_horiz(dw11, dw12),
+                                   join_horiz(dw12.t(), zeros(l2_, l2_)));
+    conditional_matrices.emplace_back(vinv_left * dv_dsigma2_ep1);
+    vinv_dv_components.push_back(&conditional_matrices.back());
+    param_names.push_back("sigma2_ep1");
+  }
+  if (!IsNoiseless(cov_setting_r2_)) {
+    mat dw22 =
+        mat(l2_, l2_, fill::value(timevar_eta * kEta2)) + timevar2 * lambda_r2_;
+    dw22.diag() += 1;
+    mat dw21 =
+        mat(l2_, l1_,
+            fill::value(timevar_eta * sqrt(kEta1 * kEta2 * sigma2_ep_r1) * rho /
+                        (2 * sqrt(sigma2_ep_r2))));
+    mat dv_dsigma2_ep2 = join_vert(join_horiz(zeros(l1_, l1_), dw21.t()),
+                                   join_horiz(dw21, dw22));
+    conditional_matrices.emplace_back(vinv_left * dv_dsigma2_ep2);
+    vinv_dv_components.push_back(&conditional_matrices.back());
+    param_names.push_back("sigma2_ep2");
+  }
+
+  int nvars = vinv_dv_components.size();
   Rcpp::NumericMatrix fim(nvars, nvars);
   for (int i = 0; i < nvars; i++) {
     for (int j = i; j < nvars; j++) {
@@ -693,9 +726,6 @@ Rcpp::NumericMatrix OptInter::ComputeFisherInformationDiagTime(
       }
     }
   }
-  Rcpp::CharacterVector param_names({"phi_gamma1", "k_gamma1", "phi_gamma2",
-                                     "k_gamma2", "rho", "k_eta1", "k_eta2",
-                                     "nugget_eta"});
   fim.attr("dimnames") = Rcpp::List::create(param_names, param_names);
   return fim;
 }
