@@ -90,14 +90,8 @@ run_stage2 <- function(
       list(rho = theta[["rho"]], rho_eblue = rho_eblue, rho_ca = rho_ca),
       as.list(theta[get("stage2_paramlist_components", qfuncMM_pkg_env)])
     )
-  # if (method == "vecchia") {
-  #   outlist$stage2$asympvar_rho <- inter_result$asympvar_rho
-  #   message(sprintf(
-  #     "Asymptotic variance for rho: %.10f", outlist$stage2$asympvar_rho
-  #   ))
-  # } else {
-  outlist$stage2$asympvar_rho <- get_asymp_var_rho(theta, j1, j2, method)
-  # }
+  asympvar_method <- ifelse(method == "vecchia", "vecchia_diag_time", method)
+  outlist$stage2$asympvar_rho <- get_asymp_var_rho(theta, j1, j2, asympvar_method)
   ci95 <- get_asymp_ci_rho(theta, 0.95, asympvar_rho = outlist$stage2$asympvar_rho)
   outlist$stage2$asympci95_rho <- ci95
   outlist$loglik <- inter_result$loglik

@@ -67,8 +67,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // get_fisher_info
-Rcpp::NumericMatrix get_fisher_info(const arma::vec& theta, const arma::mat& coords_r1, const arma::mat& coords_r2, const arma::mat& time_sqrd_mat, const Rcpp::NumericVector& stage1_r1, const Rcpp::NumericVector& stage1_r2, int cov_setting_id1, int cov_setting_id2, int kernel_type_id, bool reml);
-RcppExport SEXP _qfuncMM_get_fisher_info(SEXP thetaSEXP, SEXP coords_r1SEXP, SEXP coords_r2SEXP, SEXP time_sqrd_matSEXP, SEXP stage1_r1SEXP, SEXP stage1_r2SEXP, SEXP cov_setting_id1SEXP, SEXP cov_setting_id2SEXP, SEXP kernel_type_idSEXP, SEXP remlSEXP) {
+Rcpp::NumericMatrix get_fisher_info(const arma::vec& theta, const arma::mat& coords_r1, const arma::mat& coords_r2, const arma::mat& time_sqrd_mat, const Rcpp::NumericVector& stage1_r1, const Rcpp::NumericVector& stage1_r2, int cov_setting_id1, int cov_setting_id2, int kernel_type_id, const std::string& method);
+RcppExport SEXP _qfuncMM_get_fisher_info(SEXP thetaSEXP, SEXP coords_r1SEXP, SEXP coords_r2SEXP, SEXP time_sqrd_matSEXP, SEXP stage1_r1SEXP, SEXP stage1_r2SEXP, SEXP cov_setting_id1SEXP, SEXP cov_setting_id2SEXP, SEXP kernel_type_idSEXP, SEXP methodSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -81,29 +81,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type cov_setting_id1(cov_setting_id1SEXP);
     Rcpp::traits::input_parameter< int >::type cov_setting_id2(cov_setting_id2SEXP);
     Rcpp::traits::input_parameter< int >::type kernel_type_id(kernel_type_idSEXP);
-    Rcpp::traits::input_parameter< bool >::type reml(remlSEXP);
-    rcpp_result_gen = Rcpp::wrap(get_fisher_info(theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, reml));
-    return rcpp_result_gen;
-END_RCPP
-}
-// get_asymp_var_rho_approx_cpp
-double get_asymp_var_rho_approx_cpp(const arma::vec& theta, const arma::mat& coords_r1, const arma::mat& coords_r2, const arma::mat& time_sqrd_mat, const Rcpp::NumericVector& stage1_r1, const Rcpp::NumericVector& stage1_r2, int cov_setting_id1, int cov_setting_id2, int kernel_type_id, bool reml, bool fast);
-RcppExport SEXP _qfuncMM_get_asymp_var_rho_approx_cpp(SEXP thetaSEXP, SEXP coords_r1SEXP, SEXP coords_r2SEXP, SEXP time_sqrd_matSEXP, SEXP stage1_r1SEXP, SEXP stage1_r2SEXP, SEXP cov_setting_id1SEXP, SEXP cov_setting_id2SEXP, SEXP kernel_type_idSEXP, SEXP remlSEXP, SEXP fastSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::vec& >::type theta(thetaSEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type coords_r1(coords_r1SEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type coords_r2(coords_r2SEXP);
-    Rcpp::traits::input_parameter< const arma::mat& >::type time_sqrd_mat(time_sqrd_matSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type stage1_r1(stage1_r1SEXP);
-    Rcpp::traits::input_parameter< const Rcpp::NumericVector& >::type stage1_r2(stage1_r2SEXP);
-    Rcpp::traits::input_parameter< int >::type cov_setting_id1(cov_setting_id1SEXP);
-    Rcpp::traits::input_parameter< int >::type cov_setting_id2(cov_setting_id2SEXP);
-    Rcpp::traits::input_parameter< int >::type kernel_type_id(kernel_type_idSEXP);
-    Rcpp::traits::input_parameter< bool >::type reml(remlSEXP);
-    Rcpp::traits::input_parameter< bool >::type fast(fastSEXP);
-    rcpp_result_gen = Rcpp::wrap(get_asymp_var_rho_approx_cpp(theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, reml, fast));
+    Rcpp::traits::input_parameter< const std::string& >::type method(methodSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_fisher_info(theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, method));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -113,7 +92,6 @@ static const R_CallMethodDef CallEntries[] = {
     {"_qfuncMM_eval_stage1_nll", (DL_FUNC) &_qfuncMM_eval_stage1_nll, 5},
     {"_qfuncMM_opt_inter", (DL_FUNC) &_qfuncMM_opt_inter, 12},
     {"_qfuncMM_get_fisher_info", (DL_FUNC) &_qfuncMM_get_fisher_info, 10},
-    {"_qfuncMM_get_asymp_var_rho_approx_cpp", (DL_FUNC) &_qfuncMM_get_asymp_var_rho_approx_cpp, 11},
     {NULL, NULL, 0}
 };
 

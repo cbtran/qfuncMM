@@ -8,9 +8,7 @@ get_asymp_var_rho(
   theta,
   region1_info,
   region2_info,
-  method = c("reml", "vecchia"),
-  approx = TRUE,
-  fast = TRUE
+  method = c("reml", "vecchia", "vecchia_diag_time")
 )
 }
 \arguments{
@@ -20,11 +18,8 @@ get_asymp_var_rho(
 
 \item{region2_info}{Stage 1 info for region 2.}
 
-\item{method}{Which method was used in stage 2? Either "reml" or "vecchia".}
-
-\item{approx}{Logical. If TRUE, returns an approximation to the asymptotic variance.}
-
-\item{fast}{Logical. If TRUE, uses a faster approximation method.}
+\item{method}{Which method was used in stage 2? Either `reml`, `vecchia`, or `vecchia_diag_time`.
+Option `vecchia_diag_time` is a faster approximation of the Fisher information matrix by using the diagonal of the temporal covariance matrix.}
 }
 \value{
 A scalar value representing the asymptotic variance.

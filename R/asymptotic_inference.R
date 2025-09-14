@@ -52,9 +52,8 @@ get_asymp_ci_rho <- function(theta, level, asympvar_rho = NULL, region1_info = N
 #' @param theta Numeric. The estimated stage 2 parameter vector
 #' @param region1_info Stage 1 info for region 1.
 #' @param region2_info Stage 1 info for region 2.
-#' @param method Which method was used in stage 2? Either "reml" or "vecchia".
-#' @param approx Logical. If TRUE, returns an approximation to the asymptotic variance.
-#' @param fast Logical. If TRUE, uses a faster approximation method.
+#' @param method Which method was used in stage 2? Either `reml`, `vecchia`, or `vecchia_diag_time`.
+#'   Option `vecchia_diag_time` is a faster approximation of the Fisher information matrix by using the diagonal of the temporal covariance matrix.
 #'
 #' @return A scalar value representing the asymptotic variance.
 #'
@@ -62,50 +61,10 @@ get_asymp_ci_rho <- function(theta, level, asympvar_rho = NULL, region1_info = N
 #'
 #' @export
 get_asymp_var_rho <- function(
-    theta, region1_info, region2_info, method = c("reml", "vecchia"), approx = TRUE, fast = TRUE) {
+    theta, region1_info, region2_info, method = c("reml", "vecchia", "vecchia_diag_time")) {
   method <- match.arg(method)
   m <- region1_info$num_timepoints
   time_sqrd_mat <- outer(seq_len(m), seq_len(m), `-`)^2
-
-  if (approx) {
-    # It is faster to have the smaller region as region 2
-    r1nvox <- nrow(region1_info$coords)
-    r2nvox <- nrow(region2_info$coords)
-    asympvar_rho <- NA
-    if (r1nvox >= r2nvox) {
-      asympvar_rho <- get_asymp_var_rho_approx_cpp(
-        theta = theta, # paramlist: "rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta"
-        coords_r1 = region1_info$coords,
-        coords_r2 = region2_info$coords,
-        time_sqrd_mat = time_sqrd_mat,
-        stage1_r1 = unlist(region1_info$stage1),
-        stage1_r2 = unlist(region2_info$stage1),
-        cov_setting_id1 = cov_setting_dict(region1_info$cov_setting),
-        cov_setting_id2 = cov_setting_dict(region2_info$cov_setting),
-        kernel_type_id = kernel_dict("matern_5_2"),
-        reml = method == "reml",
-        fast = fast
-      )
-    } else {
-      temp <- theta["k_eta1"]
-      theta["k_eta1"] <- theta["k_eta2"]
-      theta["k_eta2"] <- temp
-      asympvar_rho <- get_asymp_var_rho_approx_cpp(
-        theta = theta, # paramlist: "rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta"
-        coords_r1 = region2_info$coords,
-        coords_r2 = region1_info$coords,
-        time_sqrd_mat = time_sqrd_mat,
-        stage1_r1 = unlist(region2_info$stage1),
-        stage1_r2 = unlist(region1_info$stage1),
-        cov_setting_id1 = cov_setting_dict(region2_info$cov_setting),
-        cov_setting_id2 = cov_setting_dict(region1_info$cov_setting),
-        kernel_type_id = kernel_dict("matern_5_2"),
-        reml = method == "reml",
-        fast = fast
-      )
-    }
-    return(asympvar_rho)
-  }
 
   fisher_info_mx <- get_fisher_info(
     theta = theta, # paramlist: "rho", "k_eta1", "k_eta2", "tau_eta", "nugget_eta"
@@ -117,7 +76,7 @@ get_asymp_var_rho <- function(
     cov_setting_id1 = cov_setting_dict(region1_info$cov_setting),
     cov_setting_id2 = cov_setting_dict(region2_info$cov_setting),
     kernel_type_id = kernel_dict("matern_5_2"),
-    reml = method == "reml"
+    method = method
   )
 
   rho_col_id <- which(colnames(fisher_info_mx) == "rho")

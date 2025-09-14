@@ -203,7 +203,7 @@ get_fisher_info(const arma::vec &theta, const arma::mat &coords_r1,
                 const arma::mat &coords_r2, const arma::mat &time_sqrd_mat,
                 const Rcpp::NumericVector &stage1_r1,
                 const Rcpp::NumericVector &stage1_r2, int cov_setting_id1,
-                int cov_setting_id2, int kernel_type_id, bool reml) {
+                int cov_setting_id2, int kernel_type_id, const std::string &method) {
   using arma::mat;
   using arma::vec;
   int m = time_sqrd_mat.n_rows;
@@ -226,58 +226,10 @@ get_fisher_info(const arma::vec &theta, const arma::mat &coords_r1,
                                               stage1_r2["tau_gamma"]) +
            stage1_r2["nugget_gamma"] * arma::eye(m, m);
 
-  const mat lambda_region1 = arma::kron(C1, B1);
-  const mat lambda_region2 = arma::kron(C2, B2);
-
-  // We don't need the data matrices for Fisher information, so we pass in
-  // dummies.
-  mat data_dummy_r1 = arma::zeros(m, coords_r1.n_rows);
-  mat data_dummy_r2 = arma::zeros(m, coords_r2.n_rows);
-  OptInter opt_inter(data_dummy_r1, data_dummy_r2, stage1_r1, stage1_r2,
-                     lambda_region1, lambda_region2, cov_setting1, cov_setting2,
-                     time_sqrd_mat);
-
-  mat stage1_params(2, 4);
-  stage1_params.row(0) = {stage1_r1["phi_gamma"], stage1_r1["tau_gamma"],
-                          stage1_r1["k_gamma"], stage1_r1["nugget_gamma"]};
-  stage1_params.row(1) = {stage1_r2["phi_gamma"], stage1_r2["tau_gamma"],
-                          stage1_r2["k_gamma"], stage1_r2["nugget_gamma"]};
-  Rcpp::NumericMatrix fisher_info = opt_inter.ComputeFisherInformation(
-      stage1_params, theta_vec, sqrd_dist_region1, sqrd_dist_region2, &C1, &B1,
-      &C2, &B2, reml);
-
-  return fisher_info;
-}
-
-// [[Rcpp::export]]
-double get_asymp_var_rho_approx_cpp(
-    const arma::vec &theta, const arma::mat &coords_r1,
-    const arma::mat &coords_r2, const arma::mat &time_sqrd_mat,
-    const Rcpp::NumericVector &stage1_r1, const Rcpp::NumericVector &stage1_r2,
-    int cov_setting_id1, int cov_setting_id2, int kernel_type_id, bool reml,
-    bool fast = false) {
-  using arma::mat;
-  using arma::vec;
-  int m = time_sqrd_mat.n_rows;
-
-  // Necessary evil since we can't easily expose enums to R
-  KernelType kernel_type = static_cast<KernelType>(kernel_type_id);
-  CovSetting cov_setting1 = static_cast<CovSetting>(cov_setting_id1);
-  CovSetting cov_setting2 = static_cast<CovSetting>(cov_setting_id2);
-
-  mat theta_vec(theta);
-  mat sqrd_dist_region1 = squared_distance(coords_r1);
-  mat sqrd_dist_region2 = squared_distance(coords_r2);
-  mat C1 = get_cor_mat(kernel_type, sqrd_dist_region1, stage1_r1["phi_gamma"]);
-  mat B1 = stage1_r1["k_gamma"] * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
-                                              stage1_r1["tau_gamma"]) +
-           stage1_r1["nugget_gamma"] * arma::eye(m, m);
-
-  mat C2 = get_cor_mat(kernel_type, sqrd_dist_region2, stage1_r2["phi_gamma"]);
-  mat B2 = stage1_r2["k_gamma"] * get_cor_mat(KernelType::Rbf, time_sqrd_mat,
-                                              stage1_r2["tau_gamma"]) +
-           stage1_r2["nugget_gamma"] * arma::eye(m, m);
-
+  // Parse method to determine computation approach
+  bool reml = (method == "reml");
+  bool fast = (method == "vecchia_diag_time");
+  
   mat lambda_region1;
   mat lambda_region2;
   if (fast) {
@@ -296,17 +248,23 @@ double get_asymp_var_rho_approx_cpp(
                      lambda_region1, lambda_region2, cov_setting1, cov_setting2,
                      time_sqrd_mat);
 
-  double result = 0;
-  if (reml) {
-    result = opt_inter.ComputeAsympVarRhoApprox(theta_vec, sqrd_dist_region1,
-                                                sqrd_dist_region2, reml);
-  } else if (!fast) {
-    result = opt_inter.ComputeAsympVarRhoApproxVecchia(theta_vec);
+  mat stage1_params(2, 4);
+  stage1_params.row(0) = {stage1_r1["phi_gamma"], stage1_r1["tau_gamma"],
+                          stage1_r1["k_gamma"], stage1_r1["nugget_gamma"]};
+  stage1_params.row(1) = {stage1_r2["phi_gamma"], stage1_r2["tau_gamma"],
+                          stage1_r2["k_gamma"], stage1_r2["nugget_gamma"]};
+
+  Rcpp::NumericMatrix fisher_info;
+  if (fast) {
+    fisher_info = opt_inter.ComputeFisherInformationDiagTime(
+        stage1_params, theta_vec, sqrd_dist_region1, sqrd_dist_region2, &C1,
+        &C2);
   } else {
-    result = opt_inter.ComputeAsympVarRhoApproxVecchiaBanded(
-        theta_vec, stage1_r1["k_gamma"] + stage1_r1["nugget_gamma"],
-        stage1_r2["k_gamma"] + stage1_r2["nugget_gamma"]);
+    fisher_info = opt_inter.ComputeFisherInformation(
+        stage1_params, theta_vec, sqrd_dist_region1, sqrd_dist_region2, &C1,
+        &B1, &C2, &B2, reml);
   }
 
-  return result;
+  return fisher_info;
 }
+
