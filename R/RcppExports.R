@@ -61,11 +61,7 @@ opt_inter <- function(theta_init, data_r1, data_r2, coords_r1, coords_r2, time_s
 
 #' @title Get the asymptotic variance of rho from the Fisher information matrix
 #' @noRd
-get_fisher_info <- function(theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, reml, fast) {
-    .Call('_qfuncMM_get_fisher_info', PACKAGE = 'qfuncMM', theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, reml, fast)
-}
-
-get_asymp_var_rho_approx_cpp <- function(theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, reml, fast = FALSE) {
-    .Call('_qfuncMM_get_asymp_var_rho_approx_cpp', PACKAGE = 'qfuncMM', theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, reml, fast)
+get_fisher_info <- function(theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, method) {
+    .Call('_qfuncMM_get_fisher_info', PACKAGE = 'qfuncMM', theta, coords_r1, coords_r2, time_sqrd_mat, stage1_r1, stage1_r2, cov_setting_id1, cov_setting_id2, kernel_type_id, method)
 }
 

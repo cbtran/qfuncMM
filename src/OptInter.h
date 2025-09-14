@@ -76,15 +76,6 @@ public:
       const arma::mat &dist_sqrd1, const arma::mat &dist_sqrd2, arma::mat *C1,
       arma::mat *C2);
 
-  double ComputeAsympVarRhoApprox(const arma::mat &theta_stage2,
-                                  const arma::mat &dist_sqrd1,
-                                  const arma::mat &dist_sqrd2, bool reml);
-
-  double ComputeAsympVarRhoApproxVecchia(const arma::mat &theta_stage2);
-
-  double ComputeAsympVarRhoApproxVecchiaBanded(const arma::mat &theta_stage2,
-                                               double timevar1,
-                                               double timevar2);
 };
 
 #endif
