@@ -2,7 +2,7 @@
 
 The `qfuncMM` package estimates the functional connectivity of brain regions. A two-stage procedure is used to fit a mixed model from voxel-level BOLD signals.
 
-Our paper is forthcoming. An older version of the manuscript is available [here](https://arxiv.org/abs/2211.02192).
+See [A Mixed Model Approach for Estimating Regional Functional Connectivity from Voxel-level BOLD Signals](https://arxiv.org/abs/2211.02192).
 
 To install `qfuncMM` from github, type in R console
 ```r
