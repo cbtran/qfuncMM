@@ -29,8 +29,8 @@ get_asymp_ci_rho <- function(theta, level, asympvar_rho = NULL, region1_info = N
     }
     asympvar_rho <- get_asymp_var_rho(theta, region1_info, region2_info)
   }
-  if (asympvar_rho <= 0) {
-    message("Asymptotic variance for rho is non-positive. Returning NA for confidence interval.")
+  if (is.nan(asympvar_rho) || asympvar_rho <= 0) {
+    message("Asymptotic variance for rho is non-positive or NaN. Returning NA for confidence interval.")
     return(c(lower = NA, upper = NA))
   }
   rho <- theta["rho"]
@@ -83,7 +83,9 @@ get_asymp_var_rho <- function(
   ei <- rep(0, nrow(fisher_info_mx))
   ei[rho_col_id] <- 1
 
-  if (rcond(fisher_info_mx) < 1e-12) {
+  rcond_val <- tryCatch(rcond(fisher_info_mx), error = function(e) NaN)
+  if (is.nan(rcond_val)) return(NaN)
+  if (rcond_val < 1e-12) {
     reg_param <- 1e-12 * max(diag(fisher_info_mx))
     fisher_info_mx <- fisher_info_mx + reg_param * diag(nrow(fisher_info_mx))
   }
